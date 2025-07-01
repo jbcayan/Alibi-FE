@@ -1,23 +1,23 @@
-# Use official Node.js image
+# Use official Node.js image (alpine = small image)
 FROM node:20-alpine
 
 # Set working directory inside the container
 WORKDIR /app
 
-# Copy package.json and package-lock.json first for dependency installation
-COPY package*.json ./
+# Install dependencies based on the lock file
+COPY package.json package-lock.json ./
 
-# Install dependencies
-RUN npm install
+# Install only production dependencies
+RUN npm ci --omit=dev
 
-# Copy the rest of the app
+# Copy all files except those in .dockerignore
 COPY . .
 
 # Build the Next.js app
 RUN npm run build
 
-# Expose the port the app runs on
+# Expose Next.js default port
 EXPOSE 3000
 
-# Start the Next.js app
+# Start the application
 CMD ["npm", "start"]
