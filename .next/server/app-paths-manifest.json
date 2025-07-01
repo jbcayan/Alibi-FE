@@ -1,0 +1,6 @@
+{
+  "/(payment)/subscription-plans/page": "app/(payment)/subscription-plans/page.js",
+  "/(user)/login/page": "app/(user)/login/page.js",
+  "/(user)/register/page": "app/(user)/register/page.js",
+  "/(user)/user/verify-otp/page": "app/(user)/user/verify-otp/page.js"
+}

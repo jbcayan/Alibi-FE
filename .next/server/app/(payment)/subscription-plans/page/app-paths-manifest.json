@@ -1,0 +1,3 @@
+{
+  "/(payment)/subscription-plans/page": "app/(payment)/subscription-plans/page.js"
+}

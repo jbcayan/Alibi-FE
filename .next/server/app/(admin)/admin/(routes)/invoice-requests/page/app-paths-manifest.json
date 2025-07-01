@@ -1,0 +1,3 @@
+{
+  "/(admin)/admin/(routes)/invoice-requests/page": "app/(admin)/admin/(routes)/invoice-requests/page.js"
+}
