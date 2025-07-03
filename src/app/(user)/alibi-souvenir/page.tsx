@@ -138,12 +138,7 @@ const AlibiSouvenir = () => {
   // console.log({ paginatedRequests });
 
   return (
-    <div className="main_gradient_bg min-h-screen">
-      <Menu
-        text="アリバイギャラリーからお土産注文"
-        position="left"
-        className="pl-10"
-      />
+    <div className=" pt-30 min-h-screen">
       <div className="max-w-6xl mt-4 lg:mt-0 mx-auto px-4">
         <div className="text-center mb-8">
           <div className="flex justify-center gap-4 mb-6">
@@ -177,11 +172,11 @@ const AlibiSouvenir = () => {
             {loading ? (
               <Spinner />
             ) : (
-              <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+              <div className="grid sm:grid-cols-2 pb-10 md:grid-cols-3 lg:grid-cols-4 gap-8">
                 {galleryItems.map((item) => (
                   <div
                     key={item.uid}
-                    className="rounded-2xl bg-white/10 shadow-2xl border border-white/20 hover:border-blue-400 transition-all p-4 flex flex-col gap-3 glass-card backdrop-blur-xl hover:shadow-blue-200/40 group relative cursor-pointer"
+                    className="rounded-2xl bg-white/10 shadow-2xl  border border-white/20 hover:border-blue-400 transition-all p-4 flex flex-col gap-3 glass-card backdrop-blur-xl hover:shadow-blue-200/40 group relative cursor-pointer"
                     onClick={() => setOrderModal(item)}
                   >
                     <div className="aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-blue-100/20 to-white/10 mb-3 group-hover:scale-105 transition-transform duration-200">

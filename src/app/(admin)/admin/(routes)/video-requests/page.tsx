@@ -1,6 +1,7 @@
 "use client";
 import Button from "@/components/admin/ui/Button";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import { baseUrl } from "@/constants/baseApi";
 import { adminBreadcrumbs } from "@/constants/route-breadcrumbs";
 import React, { useEffect, useState, FormEvent, ChangeEvent, FC } from "react";
 
@@ -53,7 +54,7 @@ const MainComponent: FC = () => {
       if (selectedStatus && selectedStatus !== "all")
         params.append("status", selectedStatus);
       const response = await fetch(
-        `https://api-dev.examplesite.jp/gallery/admin/video-audio-edit-requests?${params.toString()}`,
+        ` ${baseUrl}/gallery/admin/video-audio-edit-requests?${params.toString()}`,
         {
           method: "GET",
           headers: {

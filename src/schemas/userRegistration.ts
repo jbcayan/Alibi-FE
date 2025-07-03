@@ -6,7 +6,12 @@ export const registerSchema = z
       .string()
       .min(1, "メールアドレスを入力してください")
       .email("有効なメールアドレスを入力してください"),
-    password: z.string().min(6, "パスワードは6文字以上で入力してください"),
+
+    password: z
+      .string()
+      .min(6, "パスワードは6文字以上で入力してください")
+      .regex(/[A-Z]/, "パスワードには少なくとも1つの大文字を含めてください"),
+
     confirm_password: z.string(),
   })
   .refine((data) => data.password === data.confirm_password, {

@@ -3,6 +3,7 @@ import Button from "@/components/admin/ui/Button";
 import React, { useEffect, useState, ChangeEvent, FC } from "react";
 import { useRouter } from "next/navigation";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import { baseUrl } from "@/constants/baseApi";
 
 // Interfaces
 interface RequestDetail {
@@ -48,7 +49,7 @@ const RequestDetailsPage: FC<RequestDetailsProps> = ({ params }) => {
           : null;
 
       const response = await fetch(
-        `https://api-dev.examplesite.jp/gallery/admin/souvenir-requests/${params.id}`,
+        `${baseUrl}/gallery/admin/souvenir-requests/${params.id}`,
         {
           method: "GET",
           headers: {
@@ -83,7 +84,7 @@ const RequestDetailsPage: FC<RequestDetailsProps> = ({ params }) => {
           : null;
 
       const response = await fetch(
-        `https://api-dev.examplesite.jp/gallery/admin/souvenir-requests/${request.id}/update`,
+        `${baseUrl}/gallery/admin/souvenir-requests/${request.id}/update`,
         {
           method: "PUT",
           headers: {
@@ -121,7 +122,7 @@ const RequestDetailsPage: FC<RequestDetailsProps> = ({ params }) => {
           : null;
 
       const response = await fetch(
-        `https://api-dev.examplesite.jp/gallery/admin/souvenir-requests/${request.id}/notes`,
+        `${baseUrl}/gallery/admin/souvenir-requests/${request.id}/notes`,
         {
           method: "PUT",
           headers: {

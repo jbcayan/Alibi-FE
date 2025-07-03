@@ -71,8 +71,7 @@ const AlibiPhotos = () => {
   );
 
   return (
-    <div className="main_gradient_bg min-h-screen">
-      <Menu text="アリバイ写真ギャラリー" position="left" className="pl-10" />
+    <div className=" min-h-screen mt-24 mb-6">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex justify-between items-center mt-10 mb-6">
           <h2 className="text-2xl font-bold text-white">ギャラリー</h2>
