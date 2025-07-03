@@ -1,11 +1,1 @@
-{
-  "/(user)/alibi-line/page": "app/(user)/alibi-line/page.js",
-  "/(user)/alibi-photos/page": "app/(user)/alibi-photos/page.js",
-  "/(user)/alibi-souvenir/page": "app/(user)/alibi-souvenir/page.js",
-  "/(user)/alibi-video/page": "app/(user)/alibi-video/page.js",
-  "/(user)/chat/page": "app/(user)/chat/page.js",
-  "/(user)/dummy-invoice/page": "app/(user)/dummy-invoice/page.js",
-  "/(user)/photo-edit/page": "app/(user)/photo-edit/page.js",
-  "/favicon.ico/route": "app/favicon.ico/route.js",
-  "/page": "app/page.js"
-}
+{}

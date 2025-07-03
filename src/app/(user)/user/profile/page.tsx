@@ -5,7 +5,6 @@ import { userApiClient } from "@/infrastructure/user/userAPIClient";
 import { Mail, User2 } from "lucide-react";
 import Loading from "@/components/loading/Loading";
 import { user_role } from "@/constants/role";
-import Spinner from "@/components/ui/Spinner";
 
 interface UserProfile {
   email: string;
@@ -33,7 +32,7 @@ const Profile = () => {
   }, []);
 
   if (loading) {
-    return <Spinner />;
+    return <Loading />;
   }
 
   if (error) {
