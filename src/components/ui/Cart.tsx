@@ -7,7 +7,7 @@ interface CartProps {
 const Cart = ({ item }: CartProps) => {
   return (
     <div
-      className="glass-card p-4 z-10  lg:py-6 lg:px-4 cursor-pointer animate-glass-fade"
+      className="glass-card p-4  lg:py-6 lg:px-4 cursor-pointer animate-glass-fade"
       style={{ animationDelay: `${item.id * 0.1}s` }}
     >
       {/* circle   */}
