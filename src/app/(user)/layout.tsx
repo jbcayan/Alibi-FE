@@ -33,7 +33,7 @@ const UserDashboardLayout = ({ children }: Props) => {
         className={`flex-1 ${!shouldHideUI ? "" : ""} h-screen flex flex-col`}
       >
         {!shouldHideUI && (
-          <div className="fixed top-0 left-0 lg:left-[320px] right-0 z-[999]">
+          <div className="fixed top-0 left-0 z-50 lg:left-[320px] right-0  ">
             <MenuProfile
               text="ユーザーダッシュボード"
               onMenuToggle={handleMenuToggle}
