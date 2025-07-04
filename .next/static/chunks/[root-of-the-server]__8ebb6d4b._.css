@@ -585,10 +585,6 @@
     z-index: 50;
   }
 
-  .z-\[999\] {
-    z-index: 999;
-  }
-
   .z-\[9999\] {
     z-index: 9999;
   }
@@ -2200,10 +2196,6 @@
 
   .py-20 {
     padding-block: calc(var(--spacing) * 20);
-  }
-
-  .pt-2 {
-    padding-top: calc(var(--spacing) * 2);
   }
 
   .pt-3 {
