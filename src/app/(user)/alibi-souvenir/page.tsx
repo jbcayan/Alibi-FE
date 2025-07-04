@@ -24,6 +24,7 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  CreditCard,
 } from "lucide-react";
 
 const AlibiSouvenir = () => {
@@ -38,6 +39,7 @@ const AlibiSouvenir = () => {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
   const [requestPage, setRequestPage] = useState(1);
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
   const REQUESTS_PER_PAGE = 6;
   const totalPages = Math.ceil(souvenirRequests.length / REQUESTS_PER_PAGE);
   const paginatedRequests = souvenirRequests.slice(
@@ -75,6 +77,157 @@ const AlibiSouvenir = () => {
     }
   };
 
+  // Generate unique order ID
+  const generateOrderId = () => {
+    const timestamp = Date.now().toString().slice(-6);
+    const random = Math.random().toString(36).substr(2, 4).toUpperCase();
+    return `GL-TTSC-${timestamp}${random}`;
+  };
+
+  // Create payment product and redirect to Stripe
+  const createPaymentProduct = async (orderData: any) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+      const orderId = generateOrderId();
+
+      const paymentPayload = {
+        order_id: orderId,
+        amount: orderData.amount.toString(),
+        quantity: Number(orderData.quantity),
+        success_url: `${window.location.origin}/alibi-souvenir`,
+        cancel_url: `${window.location.origin}/alibi-souvenir`,
+      };
+
+      const response = await fetch(`${baseUrl}/payment/product/create/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify(paymentPayload),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Payment creation failed");
+      }
+
+      const paymentData = await response.json();
+
+      if (paymentData.checkout_url) {
+        // Store order data for later verification
+        const orderInfo = {
+          ...orderData,
+          order_id: orderId,
+          gallery_uid: orderModal?.uid,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem("pending_order", JSON.stringify(orderInfo));
+
+        // Redirect to Stripe checkout
+        window.location.href = paymentData.checkout_url;
+      } else {
+        throw new Error("No checkout URL received");
+      }
+    } catch (error: any) {
+      console.error("Payment creation error:", error);
+      throw new Error(error.message || "Payment processing failed");
+    }
+  };
+
+  // Verify payment and create souvenir request
+  const verifyPaymentAndCreateOrder = async (sessionId: string) => {
+    try {
+      const token = localStorage.getItem("accessToken");
+
+      // Verify payment
+      const verifyResponse = await fetch(
+        `${baseUrl}/payment/product/verify/?session_id=${sessionId}`,
+        {
+          method: "GET",
+          headers: {
+            Accept: "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        }
+      );
+
+      if (!verifyResponse.ok) {
+        throw new Error("Payment verification failed");
+      }
+
+      const verificationData = await verifyResponse.json();
+
+      // Get stored order data
+      const pendingOrder = localStorage.getItem("pending_order");
+      if (!pendingOrder) {
+        throw new Error("No pending order found");
+      }
+
+      const orderData = JSON.parse(pendingOrder);
+
+      // Create souvenir request
+      const souvenirPayload = {
+        media_files: [{ gallery_uid: orderData.gallery_uid }],
+        quantity: Number(orderData.quantity),
+        description: orderData.description,
+        special_note: orderData.special_note,
+        desire_delivery_date: orderData.desire_delivery_date,
+        order_id: orderData.order_id,
+        amount: orderData.amount,
+        payment_verified: true,
+      };
+
+      const souvenirResponse = await fetch(
+        `${baseUrl}/gallery/souvenir-requests`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+          body: JSON.stringify(souvenirPayload),
+        }
+      );
+
+      if (!souvenirResponse.ok) {
+        const err = await souvenirResponse.json();
+        throw new Error(err.detail || "Order creation failed after payment");
+      }
+
+      // Clear pending order
+      localStorage.removeItem("pending_order");
+
+      toast.success("Payment successful! Your order has been placed.");
+      return true;
+    } catch (error: any) {
+      console.error("Payment verification error:", error);
+      toast.error(error.message || "Payment verification failed");
+      return false;
+    }
+  };
+
+  // Check for payment callback on component mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get("session_id");
+
+    if (sessionId) {
+      setPaymentProcessing(true);
+      verifyPaymentAndCreateOrder(sessionId).finally(() => {
+        setPaymentProcessing(false);
+        // Clean up URL
+        window.history.replaceState(
+          {},
+          document.title,
+          window.location.pathname
+        );
+      });
+    }
+  }, []);
+
   useEffect(() => {
     fetchGallery();
   }, []);
@@ -93,6 +246,7 @@ const AlibiSouvenir = () => {
   } = useForm({
     defaultValues: {
       quantity: 1,
+      amount: "",
       description: "",
       special_note: "",
       desire_delivery_date: "",
@@ -102,40 +256,32 @@ const AlibiSouvenir = () => {
   const onOrderSubmit = async (data: any) => {
     if (!orderModal) return;
     setSubmitting(true);
+
     try {
-      const token = localStorage.getItem("accessToken");
-      const payload = {
-        media_files: [{ gallery_uid: orderModal.uid }],
-        quantity: Number(data.quantity),
-        description: data.description,
-        special_note: data.special_note,
-        desire_delivery_date: data.desire_delivery_date,
-      };
-      const res = await fetch(`${baseUrl}/gallery/souvenir-requests`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const err = await res.json();
-        throw new Error(err.detail || "注文に失敗しました");
-      }
-      toast.success("注文が正常に送信されました！");
-      setOrderModal(null);
-      reset();
+      await createPaymentProduct(data);
     } catch (err: any) {
       toast.error(
-        err.message || "注文に失敗しました。もう一度お試しください。"
+        err.message || "Payment processing failed. Please try again."
       );
     } finally {
       setSubmitting(false);
     }
   };
-  // console.log({ paginatedRequests });
+
+  // Show processing overlay if payment is being processed
+  if (paymentProcessing) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
+        <div className="bg-white/10 border border-white/20 rounded-xl p-8 backdrop-blur-2xl text-white text-center">
+          <div className="w-16 h-16 border-4 border-white/20 border-t-white animate-spin rounded-full mx-auto mb-4"></div>
+          <h3 className="text-xl font-semibold mb-2">Processing Payment...</h3>
+          <p className="text-white/80">
+            Please wait while we verify your payment.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="main_gradient_bg min-h-screen">
@@ -177,11 +323,11 @@ const AlibiSouvenir = () => {
             {loading ? (
               <Spinner />
             ) : (
-              <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+              <div className="grid sm:grid-cols-2 pb-10 md:grid-cols-3 lg:grid-cols-4 gap-8">
                 {galleryItems.map((item) => (
                   <div
                     key={item.uid}
-                    className="rounded-2xl bg-white/10 shadow-2xl border border-white/20 hover:border-blue-400 transition-all p-4 flex flex-col gap-3 glass-card backdrop-blur-xl hover:shadow-blue-200/40 group relative cursor-pointer"
+                    className="rounded-2xl bg-white/10 shadow-2xl  border border-white/20 hover:border-blue-400 transition-all p-4 flex flex-col gap-3 glass-card backdrop-blur-xl hover:shadow-blue-200/40 group relative cursor-pointer"
                     onClick={() => setOrderModal(item)}
                   >
                     <div className="aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-blue-100/20 to-white/10 mb-3 group-hover:scale-105 transition-transform duration-200">
@@ -256,6 +402,31 @@ const AlibiSouvenir = () => {
                   )}
                 </div>
 
+                {/* Amount */}
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-white/80 flex items-center gap-2">
+                    <CreditCard className="w-4 h-4" />
+                    Amount (¥)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    step="0.01"
+                    {...register("amount", {
+                      required: "Amount is required",
+                      min: { value: 1, message: "Amount must be at least ¥1" },
+                      valueAsNumber: true,
+                    })}
+                    className="w-full p-2 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
+                    placeholder="Enter amount in yen"
+                  />
+                  {errors.amount && (
+                    <span className="text-xs text-red-400">
+                      {errors.amount.message}
+                    </span>
+                  )}
+                </div>
+
                 {/* Description */}
                 <div>
                   <label className="block text-sm font-medium mb-1 text-white/80">
@@ -307,11 +478,16 @@ const AlibiSouvenir = () => {
                   type="submit"
                   variant="glassSec"
                   size="md"
-                  className="rounded-lg shadow-md border border-white/20 mt-2 w-full"
+                  className="rounded-lg shadow-md border border-white/20 mt-2 w-full "
                   loading={submitting}
                   disabled={submitting}
                 >
-                  Place Order
+                  <div className="flex items-center justify-center gap-2">
+                    <CreditCard className="w-6 h-6" />
+                    <span>
+                      {submitting ? "Processing..." : "Proceed to Payment"}
+                    </span>
+                  </div>
                 </Button>
               </form>
             </div>

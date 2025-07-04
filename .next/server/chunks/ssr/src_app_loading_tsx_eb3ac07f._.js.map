@@ -1,6 +1,0 @@
-{
-  "version": 3,
-  "sources": [],
-  "sections": [
-    {"offset": {"line": 7, "column": 0}, "map": {"version":3,"sources":["file:///home/ayan/Documents/Projects/FC/xyz/src/app/loading.tsx"],"sourcesContent":["import React from \"react\";\n\nconst loading = () => {\n  return (\n    <div className=\"main_gradient_bg flex justify-center items-center min-h-screen w-full\">\n      <div className=\" min-h-screen flex items-center justify-center\">\n        <div className=\"animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4\"></div>\n        <h2 className=\"text-white text-heading2\">読み込み中...</h2>\n      </div>\n    </div>\n  );\n};\n\nexport default loading;\n"],"names":[],"mappings":";;;;;AAEA,MAAM,UAAU;IACd,qBACE,8OAAC;QAAI,WAAU;kBACb,cAAA,8OAAC;YAAI,WAAU;;8BACb,8OAAC;oBAAI,WAAU;;;;;;8BACf,8OAAC;oBAAG,WAAU;8BAA2B;;;;;;;;;;;;;;;;;AAIjD;uCAEe","debugId":null}}]
-}
