@@ -1,4 +1,5 @@
 import { Photo } from "@/infrastructure/gallery/utils/types";
+import { Trash, Trash2 } from "lucide-react";
 
 const PhotoCard: React.FC<{
   photo: any;
@@ -22,9 +23,9 @@ const PhotoCard: React.FC<{
       <div className="mt-2 flex justify-end space-x-2">
         <button
           onClick={() => onDelete(photo.id)}
-          className="text-gray-600 hover:text-red-500"
+          className="text-gray-600 cursor-pointer hover:text-red-500"
         >
-          🗑️
+          <Trash2 className="text-red-500" />
         </button>
       </div>
     </div>

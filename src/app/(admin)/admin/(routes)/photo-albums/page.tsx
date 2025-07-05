@@ -16,6 +16,7 @@ import { GALLERY_QUERIES } from "@/infrastructure/gallery/utils/queries";
 import { UploadFormData } from "@/schemas/adminAlbumUpload";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { adminBreadcrumbs } from "@/constants/route-breadcrumbs";
+import { toast, ToastContainer } from "react-toastify";
 
 const CategoryFilter: React.FC<{
   selectedCategory: string;
@@ -89,12 +90,14 @@ const MainComponent: React.FC = () => {
   };
 
   const handleDeletePhoto = async (photoId: string) => {
-    if (!confirm("この写真を削除してもよろしいですか？")) return;
+    const confirmed = confirm("この写真を削除してもよろしいですか？");
+    if (!confirmed) return;
 
     try {
       await deletePhotoMutation.mutateAsync(photoId);
     } catch (error) {
       console.error("Delete failed:", error);
+      toast.error("写真の削除に失敗しました。");
     }
   };
 
@@ -119,7 +122,18 @@ const MainComponent: React.FC = () => {
             アリバイ写真アルバム管理
           </h1>
         </header>
-
+        <ToastContainer
+          position="top-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light" // or "dark"
+        />
         <main className="lg:p-6 p-3">
           <div className="mb-6 flex items-center justify-between">
             <CategoryFilter

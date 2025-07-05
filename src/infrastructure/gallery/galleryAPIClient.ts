@@ -1,3 +1,4 @@
+import { getAuthHeaders } from "../admin/utils/getAuthHeaders";
 import { GalleryResponse, Photo } from "./utils/types";
 import { baseUrl } from "@/constants/baseApi";
 
@@ -6,13 +7,7 @@ class GalleryAPIClient {
   private authToken: string | null = null;
 
   private get headers(): HeadersInit {
-    const headers: HeadersInit = {
-      Accept: "application/json",
-    };
-
-    if (this.authToken) {
-      headers.Authorization = `Bearer ${this.authToken}`;
-    }
+    const headers: HeadersInit = getAuthHeaders();
     return headers;
   }
 
@@ -86,9 +81,9 @@ class GalleryAPIClient {
 
   public async deletePhoto(uid: string): Promise<void> {
     try {
-      const response = await fetch(`${this.baseURL}/gallery/admin/${uid}`, {
+      const response = await fetch(`${baseUrl}/gallery/admin/${uid}`, {
         method: "DELETE",
-        headers: this.headers,
+        headers: getAuthHeaders(),
       });
 
       if (!response.ok) {
