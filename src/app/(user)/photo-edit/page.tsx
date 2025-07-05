@@ -137,9 +137,8 @@ export default function PhotoEditingPage() {
   };
 
   return (
-    <div className="main_gradient_bg">
-      <Menu text="アリバイ写真加工" position="left" className="pl-10" />
-      <div className="main-gradient-bg min-h-screen p-4">
+    <div className="mt-24">
+      <div className="text-white min-h-screen p-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <div className="flex justify-center gap-4 mb-6">

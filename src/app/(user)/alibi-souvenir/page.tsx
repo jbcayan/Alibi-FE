@@ -284,12 +284,7 @@ const AlibiSouvenir = () => {
   }
 
   return (
-    <div className="main_gradient_bg min-h-screen">
-      <Menu
-        text="アリバイギャラリーからお土産注文"
-        position="left"
-        className="pl-10"
-      />
+    <div className=" pt-30 min-h-screen">
       <div className="max-w-6xl mt-4 lg:mt-0 mx-auto px-4">
         <div className="text-center mb-8">
           <div className="flex justify-center gap-4 mb-6">

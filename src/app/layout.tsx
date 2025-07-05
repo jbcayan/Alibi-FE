@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   description: "日本のためのモダンなWebアプリケーション",
 };
 
-export default function RootLayout({
+export default function UserDashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
@@ -28,9 +28,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <Providers>
-          {children}
-        </Providers>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
