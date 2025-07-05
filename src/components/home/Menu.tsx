@@ -10,7 +10,12 @@ interface MenuProps {
   fontSize?: "title1" | "title2" | "title3";
   className?: string;
 }
-
+// <div className="main_gradient_bg min-h-screen">
+//   <Menu
+//     text="アリバイギャラリーからお土産注文"
+//     position="left"
+//     className="pl-10"
+//   />
 const Menu: React.FC<MenuProps> = ({
   text,
   position = "center",
