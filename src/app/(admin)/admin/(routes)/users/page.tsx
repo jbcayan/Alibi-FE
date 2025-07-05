@@ -17,6 +17,9 @@ import {
 } from "lucide-react";
 import Breadcrumbs, { BreadcrumbItem } from "@/components/ui/Breadcrumbs";
 import { adminBreadcrumbs } from "@/constants/route-breadcrumbs";
+import Button from "@/components/admin/ui/Button";
+import { userApiClient } from "@/infrastructure/user/userAPIClient";
+import { toast, ToastContainer } from "react-toastify";
 
 const StatusBadge = ({ status, type }) => {
   const getConfig = () => {
@@ -239,7 +242,7 @@ const Users = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const { data: users, isLoading, isError, error } = useUsers();
 
-  const ITEMS_PER_PAGE = 5;
+  const ITEMS_PER_PAGE = 6;
 
   const { filtered, paginatedUsers, totalPages } = useMemo(() => {
     const filtered = users?.filter(
@@ -267,6 +270,19 @@ const Users = () => {
     setCurrentPage(page);
     // Scroll to top of table on page change
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleDeleteUser = async (uid: string) => {
+    const confirmed = confirm("このユーザーを削除してもよろしいですか？");
+    if (!confirmed) return;
+
+    try {
+      await userApiClient.deleteUser(uid);
+      toast.success("ユーザーが正常に削除されました！");
+    } catch (error) {
+      console.error("Delete user failed:", error);
+      toast.error("ユーザーの削除に失敗しました。");
+    }
   };
 
   if (isLoading) {
@@ -332,6 +348,7 @@ const Users = () => {
               <div className="flex items-center gap-2 text-gray-700">
                 <User className="w-5 h-5" />
                 <span className="font-medium">
+                  {/*  TODO:  */}
                   総ユーザー数: {filtered?.length || 0}
                 </span>
               </div>
@@ -347,7 +364,19 @@ const Users = () => {
               </div>
             </div>
           </div>
-
+          {/* Your app components go here */}
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+          />
           {/* Table Section */}
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -415,6 +444,15 @@ const Users = () => {
                           status={user.is_subscribed}
                           type="subscribed"
                         />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <Button
+                          onClick={() => handleDeleteUser(user.uid)}
+                          variant="danger"
+                          className="cursor-pointer"
+                        >
+                          Delete User
+                        </Button>
                       </td>
                     </tr>
                   ))

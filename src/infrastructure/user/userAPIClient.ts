@@ -93,6 +93,18 @@ class UserAPIClient {
     }
   }
 
+  public async deleteUser(uid: string) {
+    try {
+      const response = await fetch(`${this.apiUrl}/users/${uid}`, {
+        method: "DELETE",
+        headers: this.getHeaders(),
+      });
+    } catch (error) {
+      console.error("Profile fetch error:", error);
+      throw error;
+    }
+  }
+
   public async userPhotoEditRequests(
     formData: FormData
   ): Promise<UserPhotoEditRequestResponse> {
