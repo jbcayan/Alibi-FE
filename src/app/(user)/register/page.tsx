@@ -10,8 +10,6 @@ import { Eye, EyeOff } from "lucide-react";
 import { registerSchema } from "@/schemas/userRegistration";
 import Link from "next/link";
 
-// Zod validation schema
-
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 const RegisterPage = () => {
