@@ -24,8 +24,16 @@ class GalleryAPIClient {
       if (response.status === 401) {
         throw new Error("認証が必要です。ログインしてください。");
       }
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.detail || `API Error: ${response.status}`);
+
+      let errorMessage = `API Error: ${response.status}`;
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.detail || errorData.message || errorMessage;
+      } catch (e) {
+        // If JSON parsing fails, use the default error message
+      }
+
+      throw new Error(errorMessage);
     }
 
     return response.json();
@@ -48,11 +56,11 @@ class GalleryAPIClient {
     }
   }
 
-  public createPhoto = async (data: {
+  public async createPhoto(data: {
     title: string;
     description: string;
     file: File;
-  }): Promise<Photo> => {
+  }): Promise<Photo> {
     try {
       const formData = new FormData();
       formData.append("title", data.title);
@@ -60,11 +68,9 @@ class GalleryAPIClient {
       formData.append("file_type", "image");
       formData.append("file", data.file);
 
-      // Create a copy of the base headers
-      const requestHeaders: HeadersInit = { ...this.headers };
-
-      // Cast to Record<string, any> to allow indexing with a string literal for deletion
-      delete (requestHeaders as Record<string, any>)["Content-Type"];
+      // Create headers without Content-Type for FormData
+      const requestHeaders = { ...this.headers };
+      delete (requestHeaders as any)["Content-Type"];
 
       const response = await fetch(`${this.baseURL}/gallery/admin`, {
         method: "POST",
@@ -77,49 +83,69 @@ class GalleryAPIClient {
       console.error("Failed to create photo:", error);
       throw error;
     }
-  };
+  }
 
-  public updatePhoto = async (
+  public async updatePhoto(
     uid: string,
     data: {
       title: string;
       description: string;
+      category: string;
       file?: File;
     }
-  ): Promise<Photo> => {
-    const formData = new FormData();
-    formData.append("title", data.title);
-    formData.append("description", data.description);
-    formData.append("status", "ACTIVE");
-    formData.append("file_type", "image");
+  ): Promise<Photo> {
+    try {
+      const formData = new FormData();
+      formData.append("title", data.title);
+      formData.append("description", data.description || "");
+      formData.append("category", data.category);
+      formData.append("status", "ACTIVE");
+      formData.append("file_type", "image");
 
-    if (data.file) {
-      formData.append("file", data.file);
-    } else {
-      formData.append("file", "string"); // existing file
+      // If new file is provided, append it; otherwise, keep existing
+      if (data.file) {
+        formData.append("file", data.file);
+      }
+
+      // Create headers without Content-Type for FormData
+      const requestHeaders = { ...this.headers };
+      delete (requestHeaders as any)["Content-Type"];
+      console.log({ formData });
+
+      const response = await fetch(`${this.baseURL}/gallery/admin/${uid}`, {
+        method: "PATCH",
+        headers: requestHeaders,
+        body: formData,
+      });
+
+      return await this.handleResponse<Photo>(response);
+    } catch (error) {
+      console.error("Failed to update photo:", error);
+      throw error;
     }
-
-    const requestHeaders = { ...this.headers };
-    delete (requestHeaders as any)["Content-Type"];
-
-    const response = await fetch(`${this.baseURL}/gallery/admin/${uid}`, {
-      method: "PUT",
-      headers: requestHeaders,
-      body: formData,
-    });
-
-    return await this.handleResponse<Photo>(response);
-  };
+  }
 
   public async deletePhoto(uid: string): Promise<void> {
     try {
-      const response = await fetch(`${baseUrl}/gallery/admin/${uid}`, {
+      const response = await fetch(`${this.baseURL}/gallery/admin/${uid}`, {
         method: "DELETE",
-        headers: getAuthHeaders(),
+        headers: this.headers,
       });
 
       if (!response.ok) {
-        throw new Error(`Failed to delete photo: ${response.status}`);
+        if (response.status === 401) {
+          throw new Error("認証が必要です。ログインしてください。");
+        }
+
+        let errorMessage = `Failed to delete photo: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.detail || errorData.message || errorMessage;
+        } catch (e) {
+          // If JSON parsing fails, use the default error message
+        }
+
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error("Failed to delete photo:", error);
