@@ -79,6 +79,38 @@ class GalleryAPIClient {
     }
   };
 
+  public updatePhoto = async (
+    uid: string,
+    data: {
+      title: string;
+      description: string;
+      file?: File;
+    }
+  ): Promise<Photo> => {
+    const formData = new FormData();
+    formData.append("title", data.title);
+    formData.append("description", data.description);
+    formData.append("status", "ACTIVE");
+    formData.append("file_type", "image");
+
+    if (data.file) {
+      formData.append("file", data.file);
+    } else {
+      formData.append("file", "string"); // existing file
+    }
+
+    const requestHeaders = { ...this.headers };
+    delete (requestHeaders as any)["Content-Type"];
+
+    const response = await fetch(`${this.baseURL}/gallery/admin/${uid}`, {
+      method: "PUT",
+      headers: requestHeaders,
+      body: formData,
+    });
+
+    return await this.handleResponse<Photo>(response);
+  };
+
   public async deletePhoto(uid: string): Promise<void> {
     try {
       const response = await fetch(`${baseUrl}/gallery/admin/${uid}`, {

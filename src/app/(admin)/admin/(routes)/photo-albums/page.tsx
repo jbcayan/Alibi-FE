@@ -10,12 +10,12 @@ import PhotoUploadModal from "@/components/admin/photo-albums/PhotoUploadModal";
 import { galleryAPIClient } from "@/infrastructure/gallery/galleryAPIClient";
 import {
   useCreatePhoto,
+  useUpdatePhoto,
   useDeletePhoto,
 } from "@/hooks/admin/useGalleryMutations";
 import { GALLERY_QUERIES } from "@/infrastructure/gallery/utils/queries";
 import { UploadFormData } from "@/schemas/adminAlbumUpload";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import { adminBreadcrumbs } from "@/constants/route-breadcrumbs";
 import { toast, ToastContainer } from "react-toastify";
 
 const CategoryFilter: React.FC<{
@@ -41,8 +41,16 @@ const MainComponent: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [editPhoto, setEditPhoto] = useState<{
+    uid: string;
+    title: string;
+    description: string;
+    file: string;
+    category?: string;
+  } | null>(null);
 
   const createPhotoMutation = useCreatePhoto();
+  const updatePhotoMutation = useUpdatePhoto();
   const deletePhotoMutation = useDeletePhoto();
 
   const {
@@ -69,11 +77,13 @@ const MainComponent: React.FC = () => {
   }, []);
 
   const handleUploadModalOpen = () => {
+    setEditPhoto(null);
     setIsUploadModalOpen(true);
   };
 
   const handleUploadModalClose = () => {
     setIsUploadModalOpen(false);
+    setEditPhoto(null);
   };
 
   const handlePhotoUpload = async (data: UploadFormData) => {
@@ -89,24 +99,61 @@ const MainComponent: React.FC = () => {
     }
   };
 
+  const handleRetry = () => {
+    refetch();
+  };
+
   const handleDeletePhoto = async (photoId: string) => {
     const confirmed = confirm("この写真を削除してもよろしいですか？");
     if (!confirmed) return;
 
     try {
       await deletePhotoMutation.mutateAsync(photoId);
+      handleRetry();
     } catch (error) {
       console.error("Delete failed:", error);
       toast.error("写真の削除に失敗しました。");
     }
   };
 
-  const handleRetry = () => {
-    refetch();
+  const handlePhotoEdit = (photo: any) => {
+    setEditPhoto({
+      uid: photo.uid,
+      title: photo.title,
+      description: photo.description || "",
+      file: photo.file,
+      category: photo.category || "other",
+    });
+    setIsUploadModalOpen(true);
+  };
+
+  const handlePhotoUpdate = async (
+    uid: string,
+    data: {
+      title: string;
+      description: string;
+      category: string;
+      file?: File;
+    }
+  ) => {
+    try {
+      await updatePhotoMutation.mutateAsync({
+        uid,
+        data: {
+          title: data.title,
+          description: data.description,
+        },
+      });
+      setIsUploadModalOpen(false);
+      setEditPhoto(null);
+    } catch (error) {
+      console.error("Update failed:", error);
+    }
   };
 
   const photos = galleryData?.results || [];
   const isUploading = createPhotoMutation.isPending;
+  const isUpdating = updatePhotoMutation.isPending;
 
   return (
     <div className="flex min-h-screen lg:p-4 bg-white ">
@@ -132,7 +179,7 @@ const MainComponent: React.FC = () => {
           pauseOnFocusLoss
           draggable
           pauseOnHover
-          theme="light" // or "dark"
+          theme="light"
         />
         <main className="lg:p-6 p-3">
           <div className="mb-6 flex items-center justify-between">
@@ -145,7 +192,7 @@ const MainComponent: React.FC = () => {
               variant="primary"
               leftIcon={<Upload className="h-4 w-4" />}
               onClick={handleUploadModalOpen}
-              disabled={isUploading}
+              disabled={isUploading || isUpdating}
             >
               {isUploading ? "アップロード中..." : "新規写真をアップロード"}
             </Button>
@@ -176,8 +223,9 @@ const MainComponent: React.FC = () => {
                       title: photo.title,
                       created_at: photo.created_at || new Date().toISOString(),
                     }}
+                    onUpdate={() => handlePhotoEdit(photo)}
                     onDelete={() => handleDeletePhoto(photo.uid)}
-                    // isDeleting={isDeleting}
+                    isUpdating={isUpdating}
                   />
                 ))}
                 {photos.length === 0 && (
@@ -218,8 +266,9 @@ const MainComponent: React.FC = () => {
         isOpen={isUploadModalOpen}
         onClose={handleUploadModalClose}
         onSubmit={handlePhotoUpload}
+        onUpdate={handlePhotoUpdate}
         selectedCategory={selectedCategory}
-        // isUploading={isUploading}
+        editPhoto={editPhoto}
       />
     </div>
   );

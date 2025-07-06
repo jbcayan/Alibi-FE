@@ -20,6 +20,34 @@ export const useCreatePhoto = () => {
   });
 };
 
+export const useUpdatePhoto = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      uid,
+      data,
+    }: {
+      uid: string;
+      data: {
+        title: string;
+        description: string;
+        status?: string;
+        price?: string;
+      };
+    }) => galleryAPIClient.updatePhoto(uid, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: GALLERY_QUERY_KEYS.default(),
+      });
+      toast.success("写真を更新しました");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "更新に失敗しました");
+    },
+  });
+};
+
 export const useDeletePhoto = () => {
   const queryClient = useQueryClient();
 

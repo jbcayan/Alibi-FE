@@ -6,9 +6,17 @@ import Select from "../ui/Select";
 import Textarea from "../ui/Textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
 import { UploadFormData, uploadSchema } from "@/schemas/adminAlbumUpload";
+
+// Updated form data interface for edit mode
+interface EditFormData {
+  title: string;
+  category: string;
+  description: string;
+  file?: File;
+}
 
 // Custom Modal with Light Gray Blur Background
 const CustomModal: React.FC<{
@@ -52,10 +60,19 @@ const PhotoUploadModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: UploadFormData) => void;
+  onUpdate?: (uid: string, data: EditFormData) => void;
   selectedCategory: string;
-}> = ({ isOpen, onClose, onSubmit, selectedCategory }) => {
+  editPhoto?: {
+    uid: string;
+    title: string;
+    description: string;
+    file: string;
+    category?: string;
+  } | null;
+}> = ({ isOpen, onClose, onSubmit, onUpdate, selectedCategory, editPhoto }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const isEditMode = !!editPhoto;
 
   const {
     register,
@@ -72,6 +89,27 @@ const PhotoUploadModal: React.FC<{
       description: "",
     },
   });
+
+  // Reset form when modal opens/closes or edit photo changes
+  useEffect(() => {
+    if (isOpen && editPhoto) {
+      // Edit mode: populate form with existing data
+      setValue("title", editPhoto.title);
+      setValue("description", editPhoto.description);
+      setValue("category", editPhoto.category || "other");
+      setPreviewUrl(editPhoto.file);
+      setSelectedFile(null);
+    } else if (isOpen) {
+      // Create mode: reset form
+      reset({
+        title: "",
+        category: selectedCategory === "all" ? "other" : selectedCategory,
+        description: "",
+      });
+      setPreviewUrl("");
+      setSelectedFile(null);
+    }
+  }, [isOpen, editPhoto, setValue, reset, selectedCategory]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -90,13 +128,24 @@ const PhotoUploadModal: React.FC<{
     reset();
     setSelectedFile(null);
     setPreviewUrl("");
-    if (previewUrl) {
+    if (previewUrl && selectedFile) {
       URL.revokeObjectURL(previewUrl);
     }
   };
 
   const handleFormSubmit = (data: UploadFormData) => {
-    onSubmit(data);
+    if (isEditMode && editPhoto && onUpdate) {
+      // Update mode
+      onUpdate(editPhoto.uid, {
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        file: selectedFile || undefined,
+      });
+    } else {
+      // Create mode
+      onSubmit(data);
+    }
     handleClose();
   };
 
@@ -111,18 +160,20 @@ const PhotoUploadModal: React.FC<{
     <CustomModal
       isOpen={isOpen}
       onClose={handleClose}
-      title="新しい写真をアップロード"
+      title={isEditMode ? "写真を編集" : "新しい写真をアップロード"}
     >
       <div className="space-y-4">
-        {/* File Upload */}
+        {/* File Upload - only required for create mode */}
         <Input
-          label="写真ファイル"
+          label={
+            isEditMode ? "写真ファイル（変更する場合のみ）" : "写真ファイル"
+          }
           type="file"
           accept="image/*"
           onChange={handleFileChange}
           error={
-            typeof errors.title?.message === "string"
-              ? errors.title.message
+            !isEditMode && typeof errors.file?.message === "string"
+              ? errors.file.message
               : undefined
           }
         />
@@ -174,9 +225,9 @@ const PhotoUploadModal: React.FC<{
           <Button
             variant="primary"
             onClick={handleSubmit(handleFormSubmit)}
-            disabled={!selectedFile}
+            disabled={!isEditMode && !selectedFile}
           >
-            アップロード
+            {isEditMode ? "更新" : "アップロード"}
           </Button>
         </div>
       </div>
