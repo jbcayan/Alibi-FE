@@ -57,9 +57,9 @@ const SubscriptionPlansPage = () => {
   if (loading) {
     return (
       <div className="min-h-screen main_gradient_bg text-white flex items-center justify-center">
-        <div className="flex items-center space-x-2">
-          <Loader2 className="animate-spin" size={24} />
-          <span>プランを読み込み中...</span>
+        <div className="flex items-center text-white space-x-2">
+          <Loader2 className="animate-spin text-white" size={24} />
+          <span className="text-white">プランを読み込み中...</span>
         </div>
       </div>
     );
