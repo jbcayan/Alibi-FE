@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, use } from "react";
 import {
   User,
   Edit3,
@@ -8,7 +8,11 @@ import {
   CheckCircle,
   XCircle,
   Crown,
+  RefreshCw,
 } from "lucide-react";
+import { UpdateUserData, UserData } from "@/types/admin/user";
+import { adminAPIClient } from "@/infrastructure/admin/adminAPIClient";
+import EditUserModal from "@/components/admin/EditUserModal";
 
 interface UserDetailsPageProps {
   params: {
@@ -16,81 +20,112 @@ interface UserDetailsPageProps {
   };
 }
 
-interface UserData {
-  uid: string;
-  email: string;
-  is_active: boolean;
-  kind: string;
-  is_verified: boolean;
-  is_subscribed: boolean;
-}
-
 const UserDetailsPage = ({ params }: UserDetailsPageProps) => {
-  const { uid } = params;
+  const { uid } = use(params);
 
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchUserData = async () => {
+    try {
+      setError(null);
+      const data = await adminAPIClient.getUserById(uid);
+      setUserData(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "データの取得に失敗しました"
+      );
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      setLoading(true);
-
-      await new Promise((res) => setTimeout(res, 1000));
-
-      const mockData: UserData = {
-        uid,
-        email: "dekitasatoshi@gmail.com",
-        is_active: true,
-        kind: "END_USER",
-        is_verified: true,
-        is_subscribed: false,
-      };
-
-      setUserData(mockData);
-      setLoading(false);
-    };
-
     fetchUserData();
   }, [uid]);
 
   const handleEditProfile = () => {
-    // Handle edit profile logic here
-    console.log("Edit profile clicked for user:", uid);
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateUser = async (updateData: UpdateUserData) => {
+    try {
+      const updatedUser = await adminAPIClient.updateUser(uid, updateData);
+      setUserData(updatedUser);
+
+      // You can add a toast notification here
+      console.log("User updated successfully");
+    } catch (err) {
+      console.error("Failed to update user:", err);
+      throw err; // Re-throw to let the modal handle the error
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchUserData();
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading user data...</p>
+        </div>
       </div>
     );
   }
 
-  if (!userData) {
+  if (error || !userData) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <XCircle className="h-16 w-16 text-red-500 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-gray-900 mb-2">
-            User Not Found
+            {error?.includes("見つかりません")
+              ? "User Not Found"
+              : "Error Loading User"}
           </h2>
-          <p className="text-gray-600">
-            The requested user could not be found.
+          <p className="text-gray-600 mb-4">
+            {error || "The requested user could not be found."}
           </p>
+          <button
+            onClick={handleRefresh}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-8 mt-8 lg:mt-0">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            User Details
-          </h1>
-          <p className="text-gray-600">Manage and view user information</p>
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              User Details
+            </h1>
+            <p className="text-gray-600">Manage and view user information</p>
+          </div>
+          <button
+            onClick={handleRefresh}
+            disabled={refreshing}
+            className="flex items-center px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </button>
         </div>
 
         {/* User Profile Card */}
@@ -250,6 +285,14 @@ const UserDetailsPage = ({ params }: UserDetailsPageProps) => {
           </div>
         </div>
       </div>
+
+      {/* Edit User Modal */}
+      <EditUserModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        userData={userData}
+        onSave={handleUpdateUser}
+      />
     </div>
   );
 };
