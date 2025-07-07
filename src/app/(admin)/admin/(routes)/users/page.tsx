@@ -14,12 +14,15 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Trash,
+  Edit,
+  UserRoundPen,
 } from "lucide-react";
-import Breadcrumbs, { BreadcrumbItem } from "@/components/ui/Breadcrumbs";
-import { adminBreadcrumbs } from "@/constants/route-breadcrumbs";
-import Button from "@/components/admin/ui/Button";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { userApiClient } from "@/infrastructure/user/userAPIClient";
 import { toast, ToastContainer } from "react-toastify";
+import { TUser } from "@/types/user/types";
+import Link from "next/link";
 
 const StatusBadge = ({ status, type }) => {
   const getConfig = () => {
@@ -271,6 +274,9 @@ const Users = () => {
     // Scroll to top of table on page change
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  const handleUpdateUser = (user: TUser) => {
+    console.log({ user });
+  };
 
   const handleDeleteUser = async (uid: string) => {
     const confirmed = confirm("このユーザーを削除してもよろしいですか？");
@@ -348,7 +354,6 @@ const Users = () => {
               <div className="flex items-center gap-2 text-gray-700">
                 <User className="w-5 h-5" />
                 <span className="font-medium">
-                  {/*  TODO:  */}
                   総ユーザー数: {filtered?.length || 0}
                 </span>
               </div>
@@ -410,7 +415,7 @@ const Users = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedUsers && paginatedUsers.length > 0 ? (
-                  paginatedUsers.map((user, idx) => (
+                  paginatedUsers.map((user: TUser, idx) => (
                     <tr
                       key={user.email}
                       className="hover:bg-gray-50 transition-colors"
@@ -446,13 +451,24 @@ const Users = () => {
                         />
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
-                        <Button
+                        {/* TODO: */}
+                        <Link href={`/admin/users/${user.uid}`}>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border bg-blue-100 text-blue-700 cursor-pointer border-blue-200  `}
+                          >
+                            <UserRoundPen className="w-3 h-3" />
+                            View Profile
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border bg-red-100 text-red-700 cursor-pointer border-red-200  `}
                           onClick={() => handleDeleteUser(user.uid)}
-                          variant="danger"
-                          className="cursor-pointer"
                         >
+                          <Trash className="w-3 h-3" />
                           Delete User
-                        </Button>
+                        </span>
                       </td>
                     </tr>
                   ))

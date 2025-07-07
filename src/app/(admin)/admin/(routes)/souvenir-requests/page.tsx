@@ -155,7 +155,7 @@ const MainComponent: FC = () => {
     setSelectedStatus("all");
     setCurrentPage(1);
   };
-  console.log({ requests });
+  // console.log({ requests });
   return (
     <div className="flex min-h-screen  flex-col bg-white lg:p-4">
       <div className="mb-8">

@@ -212,7 +212,7 @@ const PhotoUploadModal: React.FC<{
 
     setIsSubmitting(true);
     // debug
-    console.log({ DataFromModal: data });
+    // console.log({ DataFromModal: data });
     try {
       if (isEditMode && editPhoto) {
         // Update mode

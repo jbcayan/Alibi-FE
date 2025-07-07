@@ -110,7 +110,7 @@ class GalleryAPIClient {
       // Create headers without Content-Type for FormData
       const requestHeaders = { ...this.headers };
       delete (requestHeaders as any)["Content-Type"];
-      console.log({ formData });
+      // console.log({ formData });
 
       const response = await fetch(`${this.baseURL}/gallery/admin/${uid}`, {
         method: "PATCH",

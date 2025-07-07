@@ -114,7 +114,7 @@ const PhotoAlbumsMain: React.FC = () => {
 
   const handlePhotoUpdate = async (data: EditPhotoData) => {
     // debug
-    console.log({ UpdatingFromData: data });
+    // console.log({ UpdatingFromData: data });
     try {
       await updatePhotoMutation.mutateAsync({
         uid: data.uid,

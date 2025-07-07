@@ -65,7 +65,7 @@ const LoginPage = () => {
 
   const onSubmit: SubmitHandler<LoginFormData> = async (data) => {
     setLoading(true);
-    console.log({ data });
+    // console.log({ data });
 
     try {
       const response: LoginResponse = await userApiClient.userLogin(data);
