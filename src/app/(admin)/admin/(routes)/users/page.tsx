@@ -14,9 +14,15 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Trash,
+  Edit,
+  UserRoundPen,
 } from "lucide-react";
-import Breadcrumbs, { BreadcrumbItem } from "@/components/ui/Breadcrumbs";
-import { adminBreadcrumbs } from "@/constants/route-breadcrumbs";
+import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import { userApiClient } from "@/infrastructure/user/userAPIClient";
+import { toast, ToastContainer } from "react-toastify";
+import { TUser } from "@/types/user/types";
+import Link from "next/link";
 
 const StatusBadge = ({ status, type }) => {
   const getConfig = () => {
@@ -239,7 +245,7 @@ const Users = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const { data: users, isLoading, isError, error } = useUsers();
 
-  const ITEMS_PER_PAGE = 5;
+  const ITEMS_PER_PAGE = 6;
 
   const { filtered, paginatedUsers, totalPages } = useMemo(() => {
     const filtered = users?.filter(
@@ -267,6 +273,22 @@ const Users = () => {
     setCurrentPage(page);
     // Scroll to top of table on page change
     window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const handleUpdateUser = (user: TUser) => {
+    console.log({ user });
+  };
+
+  const handleDeleteUser = async (uid: string) => {
+    const confirmed = confirm("このユーザーを削除してもよろしいですか？");
+    if (!confirmed) return;
+
+    try {
+      await userApiClient.deleteUser(uid);
+      toast.success("ユーザーが正常に削除されました！");
+    } catch (error) {
+      console.error("Delete user failed:", error);
+      toast.error("ユーザーの削除に失敗しました。");
+    }
   };
 
   if (isLoading) {
@@ -347,7 +369,19 @@ const Users = () => {
               </div>
             </div>
           </div>
-
+          {/* Your app components go here */}
+          <ToastContainer
+            position="top-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+          />
           {/* Table Section */}
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -381,7 +415,7 @@ const Users = () => {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {paginatedUsers && paginatedUsers.length > 0 ? (
-                  paginatedUsers.map((user, idx) => (
+                  paginatedUsers.map((user: TUser, idx) => (
                     <tr
                       key={user.email}
                       className="hover:bg-gray-50 transition-colors"
@@ -415,6 +449,26 @@ const Users = () => {
                           status={user.is_subscribed}
                           type="subscribed"
                         />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        {/* TODO: */}
+                        <Link href={`/admin/users/${user.uid}`}>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border bg-blue-100 text-blue-700 cursor-pointer border-blue-200  `}
+                          >
+                            <UserRoundPen className="w-3 h-3" />
+                            View Profile
+                          </span>
+                        </Link>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-center">
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border bg-red-100 text-red-700 cursor-pointer border-red-200  `}
+                          onClick={() => handleDeleteUser(user.uid)}
+                        >
+                          <Trash className="w-3 h-3" />
+                          Delete User
+                        </span>
                       </td>
                     </tr>
                   ))

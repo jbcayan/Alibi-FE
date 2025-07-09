@@ -4,7 +4,7 @@ import Button from "@/components/admin/ui/Button";
 import { baseUrl } from "@/constants/baseApi";
 import { getAuthHeaders } from "@/infrastructure/admin/utils/getAuthHeaders";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
-import { adminBreadcrumbs } from "@/constants/route-breadcrumbs";
+import BulkDownloadModal from "@/components/admin/BulkDownloadModal";
 
 interface FileItem {
   file_type: string;
@@ -38,6 +38,7 @@ const MainComponent: React.FC = () => {
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
+  const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
 
   useEffect(() => {
     fetchRequests();
@@ -105,10 +106,20 @@ const MainComponent: React.FC = () => {
           homeHref="/admin"
         />
       </div>
+
       <header className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
-        <h1 className="text-lg font-semibold text-gray-800 sm:text-2xl">
-          アリバイ写真加工依頼管理
-        </h1>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-lg font-semibold text-gray-800 sm:text-2xl">
+            アリバイ写真加工依頼管理
+          </h1>
+          <Button
+            onClick={() => setShowDownloadModal(true)}
+            className="mt-4 sm:mt-0 bg-blue-600 hover:bg-blue-700 text-white"
+          >
+            <i className="fa-solid fa-download mr-2"></i>
+            ダウンロードリクエスト
+          </Button>
+        </div>
       </header>
 
       <main className="flex-1 px-4 py-6 sm:px-6">
@@ -246,6 +257,12 @@ const MainComponent: React.FC = () => {
           </div>
         )}
       </main>
+
+      {/* Bulk Download Modal */}
+      <BulkDownloadModal
+        isOpen={showDownloadModal}
+        onClose={() => setShowDownloadModal(false)}
+      />
     </div>
   );
 };

@@ -44,6 +44,12 @@ export const navItems: NavItem[] = [
     href: "/admin/invoice-requests",
     icon: "FileText",
   },
+  {
+    id: "9",
+    label: "ダウンロードリクエスト ",
+    href: "/admin/downloads",
+    icon: "Download",
+  },
 ];
 
 export const dashboardCards: DashboardCardProps[] = [
@@ -89,5 +95,11 @@ export const dashboardCards: DashboardCardProps[] = [
     label: "ダミー請求依頼一覧",
     icon: "FileText",
     href: "/admin/invoice-requests",
+  },
+  {
+    id: "card9",
+    label: "ダウンロードリクエスト ",
+    href: "/admin/downloads",
+    icon: "Download",
   },
 ];

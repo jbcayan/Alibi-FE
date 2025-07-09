@@ -9,6 +9,7 @@ import { userApiClient } from "@/infrastructure/user/userAPIClient";
 import { Eye, EyeOff } from "lucide-react";
 import { registerSchema } from "@/schemas/userRegistration";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 // Zod validation schema
 
@@ -18,6 +19,7 @@ const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const router = useRouter();
 
   const {
     register,
@@ -37,7 +39,7 @@ const RegisterPage = () => {
       });
       await new Promise((res) => setTimeout(res, 800));
       // Redirect to OTP verification instead of login
-      window.location.href = "/user/verify-otp";
+      router.push("/user/verify-otp");
     } catch (err) {
       console.error(err);
       toast.error("登録に失敗しました", {

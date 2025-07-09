@@ -6,9 +6,66 @@ import Select from "../ui/Select";
 import Textarea from "../ui/Textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { X } from "lucide-react";
-import { UploadFormData, uploadSchema } from "@/schemas/adminAlbumUpload";
+import { z } from "zod";
+
+// Separate schemas for create and edit modes
+const createSchema = z.object({
+  title: z.string().min(1, "タイトルは必須です"),
+  category: z.string().min(1, "カテゴリーを選択してください"),
+  description: z.string().optional(),
+  file: z
+    .any()
+    .refine((file) => {
+      if (typeof window === "undefined") return true;
+      return file instanceof File;
+    }, "写真ファイルを選択してください")
+    .refine((file) => {
+      if (typeof window === "undefined") return true;
+      return file?.size && file.size <= 5000000;
+    }, "ファイルサイズは5MB以下にしてください")
+    .refine((file) => {
+      if (typeof window === "undefined") return true;
+      const allowedTypes = [
+        "image/jpeg",
+        "image/jpg",
+        "image/png",
+        "image/webp",
+        "image/gif",
+      ];
+      return file?.type && allowedTypes.includes(file.type);
+    }, "対応していないファイル形式です"),
+});
+
+const editSchema = z.object({
+  title: z.string().min(1, "タイトルは必須です"),
+  category: z.string().min(1, "カテゴリーを選択してください"),
+  description: z.string().optional(),
+  file: z.any().optional(),
+});
+
+// Form data types
+export type UploadFormData = z.infer<typeof createSchema>;
+export type EditFormData = z.infer<typeof editSchema>;
+
+// Photo data interface
+interface PhotoData {
+  uid: string;
+  title: string;
+  description: string;
+  file: string;
+  category?: string;
+}
+
+// Edit photo data interface
+interface EditPhotoData {
+  uid: string;
+  title: string;
+  description: string;
+  category: string;
+  file?: File;
+}
 
 // Custom Modal with Light Gray Blur Background
 const CustomModal: React.FC<{
@@ -17,11 +74,23 @@ const CustomModal: React.FC<{
   title: string;
   children: React.ReactNode;
 }> = ({ isOpen, onClose, title, children }) => {
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Light gray blurred backdrop */}
+      {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/70 backdrop-blur-sm"
         onClick={onClose}
@@ -52,10 +121,15 @@ const PhotoUploadModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: UploadFormData) => void;
-  selectedCategory: string;
-}> = ({ isOpen, onClose, onSubmit, selectedCategory }) => {
+  onUpdate: (data: EditPhotoData) => void;
+  editPhoto?: PhotoData | null;
+}> = ({ isOpen, onClose, onSubmit, onUpdate, editPhoto }) => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const isEditMode = !!editPhoto;
+  const schema = isEditMode ? editSchema : createSchema;
 
   const {
     register,
@@ -64,40 +138,102 @@ const PhotoUploadModal: React.FC<{
     reset,
     setValue,
     watch,
-  } = useForm<UploadFormData>({
-    resolver: zodResolver(uploadSchema),
+  } = useForm<UploadFormData | EditFormData>({
+    resolver: zodResolver(schema),
     defaultValues: {
       title: "",
-      category: selectedCategory === "all" ? "other" : selectedCategory,
+      category: "other",
       description: "",
     },
   });
 
+  // Reset form when modal opens/closes or edit photo changes
+  useEffect(() => {
+    if (isOpen && editPhoto) {
+      // Edit mode: populate form with existing data
+      setValue("title", editPhoto.title);
+      setValue("description", editPhoto.description || "");
+      setValue("category", editPhoto.category || "other");
+      setPreviewUrl(editPhoto.file);
+      setSelectedFile(null);
+    } else if (isOpen) {
+      // Create mode: reset form
+      reset({
+        title: "",
+        category: "other",
+        description: "",
+      });
+      setPreviewUrl("");
+      setSelectedFile(null);
+    }
+  }, [isOpen, editPhoto, setValue, reset]);
+
+  // Cleanup preview URL on unmount
+  useEffect(() => {
+    return () => {
+      if (previewUrl && selectedFile) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl, selectedFile]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Clean up previous preview URL
+      if (previewUrl && selectedFile) {
+        URL.revokeObjectURL(previewUrl);
+      }
+
       setSelectedFile(file);
       setValue("file", file);
 
-      // Create preview URL
+      // Create new preview URL
       const url = URL.createObjectURL(file);
       setPreviewUrl(url);
     }
   };
 
   const handleClose = () => {
+    // Clean up preview URL
+    if (previewUrl && selectedFile) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
     onClose();
     reset();
     setSelectedFile(null);
     setPreviewUrl("");
-    if (previewUrl) {
-      URL.revokeObjectURL(previewUrl);
-    }
+    setIsSubmitting(false);
   };
 
-  const handleFormSubmit = (data: UploadFormData) => {
-    onSubmit(data);
-    handleClose();
+  const handleFormSubmit = async (data: any) => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
+    // debug
+    // console.log({ DataFromModal: data });
+    try {
+      if (isEditMode && editPhoto) {
+        // Update mode
+        await onUpdate({
+          uid: editPhoto.uid,
+          title: data.title,
+          description: data.description || "",
+          category: data.category,
+          file: selectedFile || undefined,
+        });
+      } else {
+        // Create mode
+        await onSubmit(data as UploadFormData);
+      }
+
+      handleClose();
+    } catch (error) {
+      console.error("Form submission failed:", error);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const categoryOptions = [
@@ -107,25 +243,28 @@ const PhotoUploadModal: React.FC<{
     { value: "other", label: "その他" },
   ];
 
+  const canSubmit = isEditMode || selectedFile;
+
   return (
     <CustomModal
       isOpen={isOpen}
       onClose={handleClose}
-      title="新しい写真をアップロード"
+      title={isEditMode ? "写真を編集" : "新しい写真をアップロード"}
     >
-      <div className="space-y-4">
+      <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
         {/* File Upload */}
-        <Input
-          label="写真ファイル"
-          type="file"
-          accept="image/*"
-          onChange={handleFileChange}
-          error={
-            typeof errors.title?.message === "string"
-              ? errors.title.message
-              : undefined
-          }
-        />
+        <div>
+          <Input
+            label={
+              isEditMode ? "写真ファイル（変更する場合のみ）" : "写真ファイル"
+            }
+            type="file"
+            accept="image/*"
+            onChange={handleFileChange}
+            error={!isEditMode && errors.file?.message}
+            required={!isEditMode}
+          />
+        </div>
 
         {/* Preview */}
         {previewUrl && (
@@ -136,7 +275,7 @@ const PhotoUploadModal: React.FC<{
             <div className="aspect-video overflow-hidden rounded-lg bg-gray-100">
               <img
                 src={previewUrl}
-                alt="アップロード予定の写真"
+                alt="プレビュー"
                 className="h-full w-full object-contain"
               />
             </div>
@@ -149,6 +288,7 @@ const PhotoUploadModal: React.FC<{
           placeholder="写真のタイトルを入力"
           register={register("title")}
           error={errors.title?.message}
+          required
         />
 
         {/* Category */}
@@ -157,6 +297,7 @@ const PhotoUploadModal: React.FC<{
           options={categoryOptions}
           register={register("category")}
           error={errors.category?.message}
+          required
         />
 
         {/* Description */}
@@ -168,18 +309,29 @@ const PhotoUploadModal: React.FC<{
 
         {/* Actions */}
         <div className="flex justify-end space-x-3 pt-4">
-          <Button variant="secondary" onClick={handleClose}>
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={handleClose}
+            disabled={isSubmitting}
+          >
             キャンセル
           </Button>
           <Button
+            type="submit"
             variant="primary"
-            onClick={handleSubmit(handleFormSubmit)}
-            disabled={!selectedFile}
+            disabled={!canSubmit || isSubmitting}
           >
-            アップロード
+            {isSubmitting
+              ? isEditMode
+                ? "更新中..."
+                : "アップロード中..."
+              : isEditMode
+              ? "更新"
+              : "アップロード"}
           </Button>
         </div>
-      </div>
+      </form>
     </CustomModal>
   );
 };

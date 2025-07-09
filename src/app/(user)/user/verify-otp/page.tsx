@@ -2,9 +2,9 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ToastContainer, toast } from "react-toastify";
 import Button from "@/components/ui/Button";
-
 import { Mail, CheckCircle } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { userApiClient } from "@/infrastructure/user/userAPIClient";
 
 const VerifyOtp = () => {
@@ -12,6 +12,7 @@ const VerifyOtp = () => {
   const [loading, setLoading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const router = useRouter();
 
   // Handle OTP input change
   const handleChange = (element: HTMLInputElement, index: number) => {
@@ -69,16 +70,29 @@ const VerifyOtp = () => {
 
     setLoading(true);
     try {
-      await userApiClient.verifyOtp({ otp: otpString });
+      const response = await userApiClient.verifyOtp({ otp: otpString });
+
+      // If the API returns tokens, store them
+      if (response.data?.accessToken) {
+        localStorage.setItem("accessToken", response.data.accessToken);
+        if (response.data.role) {
+          localStorage.setItem("role", response.data.role);
+        }
+      }
 
       setIsVerified(true);
       toast.success("Email認証が成功しました！", {
         position: "top-center",
       });
 
-      // Redirect to login after 2 seconds
+      // Redirect based on role after 2 seconds
       setTimeout(() => {
-        window.location.href = "/login";
+        const userRole = response.data?.role || localStorage.getItem("role");
+        if (userRole === "SUPER_ADMIN") {
+          router.push("/admin");
+        } else {
+          router.push("/"); // Redirect to dashboard instead of login
+        }
       }, 2000);
     } catch (err) {
       console.error(err);
@@ -113,7 +127,7 @@ const VerifyOtp = () => {
               </p>
               <div className="pt-4">
                 <p className="text-sm text-gray-400">
-                  まもなくログインページにリダイレクトします...
+                  まもなくダッシュボードにリダイレクトします...
                 </p>
               </div>
             </div>

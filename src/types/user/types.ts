@@ -9,3 +9,11 @@ export type User = {
   is_verified?: boolean;
   is_subscribed?: boolean | string;
 };
+export interface TUser {
+  uid: string;
+  email: string;
+  is_active: boolean;
+  is_verified: boolean;
+  is_subscribed: boolean;
+  kind: "END_USER" | "SUPER_ADMIN";
+}

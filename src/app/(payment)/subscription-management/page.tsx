@@ -33,7 +33,7 @@ const SubscriptionManagePage = () => {
       // Refresh subscription status
       await refreshSubscriptionStatus();
 
-      console.log("Subscription cancelled:", response);
+      // console.log("Subscription cancelled:", response);
     } catch (error) {
       console.error("Failed to cancel subscription:", error);
       toast.error("キャンセルに失敗しました");

@@ -3,19 +3,61 @@ import { GALLERY_QUERY_KEYS } from "@/infrastructure/gallery/utils/keys";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "react-toastify";
 
+// Types for mutations
+interface CreatePhotoData {
+  title: string;
+  description: string;
+  file: File;
+}
+
+interface UpdatePhotoData {
+  uid: string;
+  data: {
+    title: string;
+    description: string;
+    category: string;
+    file?: File;
+  };
+}
+
 export const useCreatePhoto = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: galleryAPIClient.createPhoto,
+    mutationFn: async (data: CreatePhotoData) => {
+      return await galleryAPIClient.createPhoto(data);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: GALLERY_QUERY_KEYS.default(),
       });
-      toast.success("写真をアップロードしました");
+      // Don't show toast here - let the component handle it
     },
     onError: (error: Error) => {
-      toast.error(error.message || "アップロードに失敗しました");
+      console.error("Create photo failed:", error);
+      // Don't show toast here - let the component handle it
+      throw error;
+    },
+  });
+};
+
+export const useUpdatePhoto = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ uid, data }: UpdatePhotoData) => {
+      return await galleryAPIClient.updatePhoto(uid, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: GALLERY_QUERY_KEYS.default(),
+      });
+      // Don't show toast here - let the component handle it
+    },
+    onError: (error: Error) => {
+      console.error("Update photo failed:", error);
+      // Don't show toast here - let the component handle it
+      throw error;
     },
   });
 };
@@ -24,15 +66,19 @@ export const useDeletePhoto = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: galleryAPIClient.deletePhoto,
+    mutationFn: async (uid: string) => {
+      return await galleryAPIClient.deletePhoto(uid);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: GALLERY_QUERY_KEYS.default(),
       });
-      toast.success("写真を削除しました");
+      // Don't show toast here - let the component handle it
     },
     onError: (error: Error) => {
-      toast.error(error.message || "削除に失敗しました");
+      console.error("Delete photo failed:", error);
+      // Don't show toast here - let the component handle it
+      throw error;
     },
   });
 };

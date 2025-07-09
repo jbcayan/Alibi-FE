@@ -7,25 +7,25 @@ export function middleware(request: NextRequest) {
   const accessToken = request.cookies.get("accessToken")?.value;
   const role = request.cookies.get("role")?.value;
 
-  // console.log("🧩 Path:", pathname);
-  // console.log("🧩 Role:", role);
-
-  // ✅ Force admin redirect if accessing "/"
   if (pathname === "/" && role === "SUPER_ADMIN") {
     return NextResponse.redirect(new URL("/admin", request.url));
   }
 
-  // ✅ Add verify-otp routes to public routes
-  const publicRoutes = [
-    "/login",
-    "/register",
-    "/user/verify-otp",
-    "/verify-otp",
-  ];
+  // Define route categories
+  const publicRoutes = ["/login", "/register"];
+  const otpRoutes = ["/user/verify-otp"]; // OTP routes should be accessible during registration flow
   const adminRoutes = ["/admin"];
   const subscriptionRoutes = ["/subscription"];
 
-  // ✅ If public route and already logged in, redirect
+  //  Handle OTP routes - these should be accessible even if user has some tokens
+  // but not fully verified yet
+  if (otpRoutes.some((route) => pathname.startsWith(route))) {
+    // Allow access to OTP verification regardless of token status
+    // This is needed for the registration flow
+    return NextResponse.next();
+  }
+
+  // Handle public routes (login, register)
   if (publicRoutes.some((route) => pathname.startsWith(route))) {
     if (accessToken) {
       if (role === "SUPER_ADMIN") {
@@ -37,12 +37,12 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ✅ Block unauthenticated users
+  //  Block unauthenticated users from protected routes
   if (!accessToken) {
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // ✅ Admin route guard
+  // Admin route guard
   if (adminRoutes.some((route) => pathname.startsWith(route))) {
     if (role !== "SUPER_ADMIN") {
       return NextResponse.redirect(new URL("/", request.url));
@@ -50,7 +50,7 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // ✅ Let other routes pass
+  //  Let other routes pass
   return NextResponse.next();
 }
 
