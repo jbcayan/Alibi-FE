@@ -38,7 +38,7 @@ const nextConfig: NextConfig = {
     ],
   },
   typescript: {
-    ignoreBuildErrors: true, // ✅ Skip TypeScript build errors
+    ignoreBuildErrors: true,
   },
 };
 
