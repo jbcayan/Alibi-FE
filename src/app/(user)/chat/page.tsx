@@ -219,8 +219,8 @@ const Chat = () => {
                     {lastMessage?.text || "新しいチャット"}
                   </p>
                   {unreadCount > 0 && (
-                    <div className="flex justify-end mt-1 lg:mt-2">
-                      <span className="bg-brand-500 text-white text-xs rounded-full px-2 py-1">
+                    <div className="flex justify-center  mt-1 glass w-8 lg:mt-2">
+                      <span className="bg-brand-500 text-red-500 text-xs rounded-full px-2 py-1">
                         {unreadCount}
                       </span>
                     </div>
