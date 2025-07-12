@@ -33,11 +33,20 @@ const Chat = () => {
 
   // Fetch selected thread details
   const { data: selectedThread, isLoading: threadLoading } = useThread(
-    selectedThreadId!
+    selectedThreadId!,
+    {
+      enabled: !!selectedThreadId,
+    }
   );
 
-  // Fetch messages
-  const { data: messagesData, isLoading: messagesLoading } = useMessages(1, 50);
+  // Fetch messages for selected thread only
+  const { data: messagesData, isLoading: messagesLoading } = useMessages(
+    1,
+    50,
+    {
+      enabled: !!selectedThreadId,
+    }
+  );
 
   // Mutations
   const sendMessageMutation = useSendMessage();
@@ -50,15 +59,17 @@ const Chat = () => {
   };
 
   useEffect(() => {
-    scrollToBottom();
-  }, [messagesData, selectedThread]);
+    if (messagesData?.results?.length > 0) {
+      scrollToBottom();
+    }
+  }, [messagesData?.results?.length]);
 
-  // Set initial thread selection
+  // Set initial thread selection only once
   useEffect(() => {
-    if (threadsData?.results?.length > 0 && !selectedThreadId) {
+    if (threadsData?.results?.length > 0 && selectedThreadId === null) {
       setSelectedThreadId(threadsData.results[0].id);
     }
-  }, [threadsData, selectedThreadId]);
+  }, [threadsData?.results, selectedThreadId]);
 
   // Handle send message
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -81,9 +92,11 @@ const Chat = () => {
 
   // Handle thread selection
   const handleThreadSelect = (threadId: number) => {
-    setSelectedThreadId(threadId);
-    // Mark all messages as read when thread is selected
-    markAllReadMutation.mutate(threadId);
+    if (selectedThreadId !== threadId) {
+      setSelectedThreadId(threadId);
+      // Mark all messages as read when thread is selected
+      markAllReadMutation.mutate(threadId);
+    }
   };
 
   // Handle create new thread
@@ -141,35 +154,37 @@ const Chat = () => {
   }
 
   return (
-    <div className="main_gradient_bg min-h-[calc(100vh-200px)]  mt-16 flex">
+    <div className="main_gradient_bg min-h-[calc(100vh-200px)] mt-16 flex flex-col lg:flex-row">
       {/* Sidebar */}
-      <div className="w-80 glass-user-sidebar border-r border-pri p-4 flex flex-col">
+      <div className="w-full lg:w-80 glass-user-sidebar border-r border-pri p-2 lg:p-4 flex flex-col max-h-96 lg:max-h-none overflow-y-auto lg:overflow-visible">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white mb-4">チャット</h1>
+        <div className="mb-4 lg:mb-6">
+          <h1 className="text-xl lg:text-2xl font-bold text-white mb-2 lg:mb-4">
+            チャット
+          </h1>
           <button
             onClick={handleCreateThread}
             disabled={createThreadMutation.isPending}
-            className="w-full bg-pri glass-card rounded-lg p-3 text-white hover:bg-opacity-80 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50"
+            className="w-full bg-pri glass-card rounded-lg p-2 lg:p-3 text-white hover:bg-opacity-80 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 text-sm lg:text-base"
           >
             {createThreadMutation.isPending ? (
-              <Loader2 size={20} className="animate-spin" />
+              <Loader2 size={16} className="animate-spin lg:w-5 lg:h-5" />
             ) : (
-              <Plus size={20} />
+              <Plus size={16} className="lg:w-5 lg:h-5" />
             )}
             新しいチャットルーム
           </button>
         </div>
 
         {/* Thread Selection */}
-        <div className="mb-4">
-          <p className="text-gray-400 text-sm mb-3">
+        <div className="mb-2 lg:mb-4">
+          <p className="text-gray-400 text-xs lg:text-sm mb-2 lg:mb-3">
             チャットルームを選択してください
           </p>
         </div>
 
         {/* Threads List */}
-        <div className="flex-1 overflow-y-auto space-y-2">
+        <div className="flex-1 overflow-y-auto space-y-2 max-h-48 lg:max-h-none">
           {threadsLoading ? (
             <div className="flex justify-center items-center h-32">
               <Loader2 className="animate-spin text-white" size={24} />
@@ -184,25 +199,27 @@ const Chat = () => {
                 <div
                   key={thread.id}
                   onClick={() => handleThreadSelect(thread.id)}
-                  className={`glass-card rounded-lg p-4 cursor-pointer transition-all duration-300 hover:bg-opacity-80 ${
-                    selectedThreadId === thread.id ? "border-brand-400" : ""
+                  className={`glass-card rounded-lg p-2 lg:p-4 cursor-pointer transition-all duration-300 hover:bg-opacity-80 ${
+                    selectedThreadId === thread.id
+                      ? "border-2 border-brand-400 bg-brand-500 bg-opacity-20"
+                      : "border border-gray-600"
                   }`}
                 >
-                  <div className="flex justify-between items-start mb-2">
-                    <h3 className="text-white font-medium text-sm">
+                  <div className="flex justify-between items-start mb-1 lg:mb-2">
+                    <h3 className="text-white font-medium text-xs lg:text-sm truncate pr-2">
                       {thread.user_email || `スレッド ${thread.id}`}
                     </h3>
-                    <span className="text-gray-400 text-xs">
+                    <span className="text-gray-400 text-xs flex-shrink-0">
                       {formatTimestamp(
                         lastMessage?.created_at || thread.created_at
                       )}
                     </span>
                   </div>
-                  <p className="text-gray-300 text-sm truncate">
+                  <p className="text-gray-300 text-xs lg:text-sm truncate">
                     {lastMessage?.text || "新しいチャット"}
                   </p>
                   {unreadCount > 0 && (
-                    <div className="flex justify-end mt-2">
+                    <div className="flex justify-end mt-1 lg:mt-2">
                       <span className="bg-brand-500 text-white text-xs rounded-full px-2 py-1">
                         {unreadCount}
                       </span>
@@ -216,13 +233,13 @@ const Chat = () => {
       </div>
 
       {/* Chat Area */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col min-h-0">
         {/* Chat Header */}
-        <div className="glass-card border-b border-pri p-4 m-4 mb-0 rounded-t-lg">
-          <h2 className="text-xl font-bold text-white">
+        <div className="glass-card border-b border-pri p-2 lg:p-4 m-2 lg:m-4 mb-0 rounded-t-lg">
+          <h2 className="text-lg lg:text-xl font-bold text-white">
             {selectedThread?.user_email || "チャット"}
           </h2>
-          <p className="text-gray-400 text-sm">
+          <p className="text-gray-400 text-xs lg:text-sm">
             最後の活動:{" "}
             {selectedThread?.created_at
               ? new Date(selectedThread.created_at).toLocaleString("ja-JP")
@@ -231,14 +248,16 @@ const Chat = () => {
         </div>
 
         {/* Messages Area */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+        <div className="flex-1 overflow-y-auto p-2 lg:p-4 space-y-2 lg:space-y-4">
           {messagesLoading || threadLoading ? (
             <div className="flex justify-center items-center h-32">
               <Loader2 className="animate-spin text-white" size={24} />
             </div>
           ) : (
             currentThreadMessages.map((message: Message) => {
+              const isAdmin = message.sender_kind === "SUPER_ADMIN";
               const isSupport = message.sender_kind === "support";
+              const isEndUser = message.sender_kind === "END_USER";
               const timestamp = new Date(message.created_at).toLocaleTimeString(
                 "ja-JP",
                 {
@@ -251,25 +270,31 @@ const Chat = () => {
                 <div
                   key={message.id}
                   className={`flex ${
-                    isSupport ? "justify-start" : "justify-end"
+                    isAdmin || isSupport ? "justify-start" : "justify-end"
                   }`}
                 >
                   <div
-                    className={`max-w-xs lg:max-w-md ${
-                      isSupport ? "order-1" : "order-2"
+                    className={`max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl ${
+                      isAdmin || isSupport ? "order-1" : "order-2"
                     }`}
                   >
-                    {isSupport && (
-                      <div className="text-xs text-gray-400 mb-1">サポート</div>
+                    {(isAdmin || isSupport) && (
+                      <div className="text-xs text-gray-400 mb-1 px-1">
+                        {isAdmin ? "管理者" : "サポート"}
+                      </div>
                     )}
                     <div
-                      className={`glass-card rounded-lg p-3 ${
-                        isSupport
+                      className={`glass-card rounded-lg p-2 lg:p-3 ${
+                        isAdmin
+                          ? "bg-green-600 bg-opacity-80 text-white"
+                          : isSupport
                           ? "bg-glass-medium text-white"
                           : "bg-brand-500 text-white"
                       }`}
                     >
-                      <p className="text-sm">{message.text}</p>
+                      <p className="text-xs lg:text-sm break-words">
+                        {message.text}
+                      </p>
                       <div className="text-xs text-gray-300 mt-1">
                         {timestamp}
                       </div>
@@ -282,8 +307,8 @@ const Chat = () => {
 
           {sendMessageMutation.isPending && (
             <div className="flex justify-end">
-              <div className="max-w-xs lg:max-w-md">
-                <div className="glass-card bg-brand-500 rounded-lg p-3">
+              <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
+                <div className="glass-card bg-brand-500 rounded-lg p-2 lg:p-3">
                   <div className="flex space-x-1">
                     <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
                     <div
@@ -304,37 +329,32 @@ const Chat = () => {
         </div>
 
         {/* Message Input */}
-        <div className="p-4 mb-20">
-          <div className="flex gap-2">
+        <div className="p-2 lg:p-4 mb-4 lg:mb-20">
+          <form onSubmit={handleSendMessage} className="flex gap-2">
             <input
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               placeholder="メッセージを入力してください..."
-              className="flex-1 glass-input p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400"
+              className="flex-1 glass-input p-2 lg:p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 text-sm lg:text-base"
               disabled={sendMessageMutation.isPending || !selectedThreadId}
-              onKeyPress={(e) => {
-                if (e.key === "Enter") {
-                  handleSendMessage(e);
-                }
-              }}
             />
             <button
-              onClick={handleSendMessage}
+              type="submit"
               disabled={
                 !newMessage.trim() ||
                 sendMessageMutation.isPending ||
                 !selectedThreadId
               }
-              className="bg-brand-500 cursor-pointer hover:bg-brand-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-3 rounded-lg transition-colors duration-200 flex items-center justify-center min-w-[48px]"
+              className="bg-brand-500 cursor-pointer hover:bg-brand-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 lg:p-3 rounded-lg transition-colors duration-200 flex items-center justify-center min-w-[40px] lg:min-w-[48px]"
             >
               {sendMessageMutation.isPending ? (
-                <Loader2 size={20} className="animate-spin " />
+                <Loader2 size={16} className="animate-spin lg:w-5 lg:h-5" />
               ) : (
-                <Send size={20} />
+                <Send size={16} className="lg:w-5 lg:h-5" />
               )}
             </button>
-          </div>
+          </form>
         </div>
       </div>
     </div>
