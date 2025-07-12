@@ -1,278 +1,364 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { Send, Plus, Loader2 } from "lucide-react";
+import { useChatQueries } from "@/hooks/chat/useChatQueries";
+import {
+  CreateMessageRequest,
+  Message,
+  Thread,
+} from "@/infrastructure/admin/chat/utils/types";
 
-import { ChatRoomFormData } from "@/schemas/chat";
+const Chat = () => {
+  const [selectedThreadId, setSelectedThreadId] = useState<number | null>(null);
+  const [newMessage, setNewMessage] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-import "./styles.css";
-import { ChatRoom, ChatState, Message } from "@/types/chat/types";
-import ChatSidebar from "@/components/chat/ChatSidebar";
-import MessageInput from "@/components/chat/MessageInput";
-import MessageList from "@/components/chat/MessageList";
-import NewRoomModal from "@/components/chat/NewRoomModal";
+  // Get hooks from useChatQueries
+  const {
+    useThreads,
+    useThread,
+    useMessages,
+    useSendMessage,
+    useCreateThread,
+    useMarkAllRead,
+  } = useChatQueries();
 
-const ChatMain: React.FC = () => {
-  // Sample data - replace with real data from your backend
-  const [chatRooms, setChatRooms] = useState<ChatRoom[]>([
+  // Fetch threads
+  const {
+    data: threadsData,
+    isLoading: threadsLoading,
+    error: threadsError,
+  } = useThreads(currentPage);
+
+  // Fetch selected thread details
+  const { data: selectedThread, isLoading: threadLoading } = useThread(
+    selectedThreadId!,
     {
-      id: "1",
-      title: "一般的な質問",
-      lastMessage: "ありがとうございました！",
-      lastActivity: new Date(Date.now() - 1000 * 60 * 30), // 30 minutes ago
-      unreadCount: 2,
-    },
-    {
-      id: "2",
-      title: "技術サポート",
-      lastMessage: "問題は解決しましたか？",
-      lastActivity: new Date(Date.now() - 1000 * 60 * 60 * 2), // 2 hours ago
-    },
-    {
-      id: "3",
-      title: "プロジェクト相談",
-      lastMessage: "来週の会議について",
-      lastActivity: new Date(Date.now() - 1000 * 60 * 60 * 24), // 1 day ago
-    },
-  ]);
+      enabled: !!selectedThreadId,
+    }
+  );
 
-  const [chatState, setChatState] = useState<ChatState>({
-    selectedRoom: null,
-    showNewRoomModal: false,
-    messages: [],
-  });
-
-  const sampleMessages: Message[] = [
+  // Fetch messages for selected thread only
+  const { data: messagesData, isLoading: messagesLoading } = useMessages(
+    1,
+    50,
     {
-      id: "1",
-      content: "こんにちは！何かお手伝いできることはありますか？",
-      timestamp: new Date(Date.now() - 1000 * 60 * 60),
-      sender: "other",
-      senderName: "サポート",
-    },
-    {
-      id: "2",
-      content: "はい、プロジェクトについて質問があります。",
-      timestamp: new Date(Date.now() - 1000 * 60 * 50),
-      sender: "user",
-    },
-    {
-      id: "3",
-      content: "もちろんです！どのようなことでしょうか？詳しく教えてください。",
-      timestamp: new Date(Date.now() - 1000 * 60 * 45),
-      sender: "other",
-      senderName: "サポート",
-    },
-  ];
+      enabled: !!selectedThreadId,
+    }
+  );
 
-  const handleRoomSelect = (room: ChatRoom) => {
-    setChatState((prev) => ({
-      ...prev,
-      selectedRoom: room,
-      messages: room.id === "1" ? sampleMessages : [], // Show sample messages for first room
-    }));
+  // Mutations
+  const sendMessageMutation = useSendMessage();
+  const createThreadMutation = useCreateThread();
+  const markAllReadMutation = useMarkAllRead();
 
-    // Mark room as read
-    setChatRooms((prev) =>
-      prev.map((r) => (r.id === room.id ? { ...r, unreadCount: 0 } : r))
-    );
+  // Auto scroll to bottom when new messages arrive
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  const handleNewRoom = () => {
-    setChatState((prev) => ({
-      ...prev,
-      showNewRoomModal: true,
-    }));
-  };
+  useEffect(() => {
+    if (messagesData?.results?.length > 0) {
+      scrollToBottom();
+    }
+  }, [messagesData?.results?.length]);
 
-  const handleCloseModal = () => {
-    setChatState((prev) => ({
-      ...prev,
-      showNewRoomModal: false,
-    }));
-  };
+  // Set initial thread selection only once
+  useEffect(() => {
+    if (threadsData?.results?.length > 0 && selectedThreadId === null) {
+      setSelectedThreadId(threadsData.results[0].id);
+    }
+  }, [threadsData?.results, selectedThreadId]);
 
-  const handleCreateRoom = (data: ChatRoomFormData) => {
-    const newRoom: ChatRoom = {
-      id: Date.now().toString(),
-      title: data.title,
-      lastActivity: new Date(),
+  // Handle send message
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedThreadId) return;
+
+    const messageData: CreateMessageRequest = {
+      thread: selectedThreadId,
+      text: newMessage.trim(),
+      is_read: false,
     };
 
-    setChatRooms((prev) => [newRoom, ...prev]);
-    setChatState((prev) => ({
-      ...prev,
-      selectedRoom: newRoom,
-      messages: [],
-      showNewRoomModal: false,
-    }));
+    try {
+      await sendMessageMutation.mutateAsync(messageData);
+      setNewMessage("");
+    } catch (error) {
+      console.error("Failed to send message:", error);
+    }
   };
 
-  const handleSendMessage = (messageContent: string) => {
-    if (!chatState.selectedRoom) return;
+  // Handle thread selection
+  const handleThreadSelect = (threadId: number) => {
+    if (selectedThreadId !== threadId) {
+      setSelectedThreadId(threadId);
+      // Mark all messages as read when thread is selected
+      markAllReadMutation.mutate(threadId);
+    }
+  };
 
-    const newMessage: Message = {
-      id: Date.now().toString(),
-      content: messageContent,
-      timestamp: new Date(),
-      sender: "user",
-    };
-
-    setChatState((prev) => ({
-      ...prev,
-      messages: [...prev.messages, newMessage],
-    }));
-
-    // Update last message in room
-    setChatRooms((prev) =>
-      prev.map((room) =>
-        room.id === chatState.selectedRoom?.id
-          ? {
-              ...room,
-              lastMessage: messageContent,
-              lastActivity: new Date(),
-            }
-          : room
-      )
-    );
-
-    // Simulate response after a delay
-    setTimeout(() => {
-      const responseMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: "メッセージを受信しました。ありがとうございます！",
-        timestamp: new Date(),
-        sender: "other",
-        senderName: "サポート",
+  // Handle create new thread
+  const handleCreateThread = async () => {
+    try {
+      const newThreadData = {
+        thread: 0, // Will be set by backend
+        sender_email: "user@example.com", // Replace with actual user email
+        sender_kind: "user",
+        text: "新しいチャットを開始します",
       };
 
-      setChatState((prev) => ({
-        ...prev,
-        messages: [...prev.messages, responseMessage],
-      }));
-    }, 1000);
+      await createThreadMutation.mutateAsync(newThreadData);
+    } catch (error) {
+      console.error("Failed to create thread:", error);
+    }
   };
 
-  return (
-    <div className=" relative">
-      {/* Coming Soon Overlay */}
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: "100%",
-          height: "100%",
-          background: "rgba(0,0,0,0.6)",
-          zIndex: 1000,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          pointerEvents: "all",
-        }}
-      >
-        <span
-          style={{
-            color: "#fff",
-            fontSize: "2.5rem",
-            fontWeight: "bold",
-            textShadow: "0 2px 8px #000, 0 0 40px #fff2",
-            opacity: 0.95,
-            letterSpacing: 2,
-          }}
-        >
-          Coming Soon
-        </span>
-        <span
-          style={{
-            color: "#fff",
-            marginTop: 12,
-            fontSize: "1.2rem",
-            opacity: 0.8,
-          }}
-        >
-          This feature is not available yet.
-        </span>
+  // Format timestamp
+  const formatTimestamp = (timestamp: string) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInHours = Math.floor(
+      (now.getTime() - date.getTime()) / (1000 * 60 * 60)
+    );
 
-        {/* Back Button */}
-        <button
-          onClick={() => window.history.back()}
-          style={{
-            marginTop: 30,
-            padding: "10px 20px",
-            backgroundColor: "#ffffff22",
-            color: "#fff",
-            border: "1px solid #fff5",
-            borderRadius: "6px",
-            fontSize: "1rem",
-            cursor: "pointer",
-            transition: "background 0.3s",
-          }}
-          onMouseOver={(e) => {
-            e.currentTarget.style.backgroundColor = "#ffffff33";
-          }}
-          onMouseOut={(e) => {
-            e.currentTarget.style.backgroundColor = "#ffffff22";
-          }}
-        >
-          ← Back
-        </button>
+    if (diffInHours < 1) {
+      const diffInMinutes = Math.floor(
+        (now.getTime() - date.getTime()) / (1000 * 60)
+      );
+      return `${diffInMinutes}分前`;
+    } else if (diffInHours < 24) {
+      return `${diffInHours}時間前`;
+    } else {
+      return date.toLocaleDateString("ja-JP", {
+        month: "numeric",
+        day: "numeric",
+      });
+    }
+  };
+
+  // Get current thread's messages
+  const currentThreadMessages = selectedThread?.messages || [];
+
+  // Error handling
+  if (threadsError) {
+    return (
+      <div className="main_gradient_bg min-h-screen flex items-center justify-center">
+        <div className="glass-card p-8 rounded-lg text-center">
+          <p className="text-red-400 mb-4">エラーが発生しました</p>
+          <p className="text-gray-300">チャットデータを読み込めませんでした</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="main_gradient_bg min-h-[calc(100vh-200px)] mt-16 flex flex-col lg:flex-row">
+      {/* Sidebar */}
+      <div className="w-full lg:w-80 glass-user-sidebar border-r border-pri p-2 lg:p-4 flex flex-col max-h-96 lg:max-h-none overflow-y-auto lg:overflow-visible">
+        {/* Header */}
+        <div className="mb-4 lg:mb-6">
+          <h1 className="text-xl lg:text-2xl font-bold text-white mb-2 lg:mb-4">
+            チャット
+          </h1>
+          <button
+            onClick={handleCreateThread}
+            disabled={createThreadMutation.isPending}
+            className="w-full bg-pri glass-card rounded-lg p-2 lg:p-3 text-white hover:bg-opacity-80 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 text-sm lg:text-base"
+          >
+            {createThreadMutation.isPending ? (
+              <Loader2 size={16} className="animate-spin lg:w-5 lg:h-5" />
+            ) : (
+              <Plus size={16} className="lg:w-5 lg:h-5" />
+            )}
+            新しいチャットルーム
+          </button>
+        </div>
+
+        {/* Thread Selection */}
+        <div className="mb-2 lg:mb-4">
+          <p className="text-gray-400 text-xs lg:text-sm mb-2 lg:mb-3">
+            チャットルームを選択してください
+          </p>
+        </div>
+
+        {/* Threads List */}
+        <div className="flex-1 overflow-y-auto space-y-2 max-h-48 lg:max-h-none">
+          {threadsLoading ? (
+            <div className="flex justify-center items-center h-32">
+              <Loader2 className="animate-spin text-white" size={24} />
+            </div>
+          ) : (
+            threadsData?.results?.map((thread: Thread) => {
+              const lastMessage = thread.messages?.[thread.messages.length - 1];
+              const unreadCount =
+                thread.messages?.filter((msg) => !msg.is_read).length || 0;
+
+              return (
+                <div
+                  key={thread.id}
+                  onClick={() => handleThreadSelect(thread.id)}
+                  className={`glass-card rounded-lg p-2 lg:p-4 cursor-pointer transition-all duration-300 hover:bg-opacity-80 ${
+                    selectedThreadId === thread.id
+                      ? "border-2 border-brand-400 bg-brand-500 bg-opacity-20"
+                      : "border border-gray-600"
+                  }`}
+                >
+                  <div className="flex justify-between items-start mb-1 lg:mb-2">
+                    <h3 className="text-white font-medium text-xs lg:text-sm truncate pr-2">
+                      {thread.user_email || `スレッド ${thread.id}`}
+                    </h3>
+                    <span className="text-gray-400 text-xs flex-shrink-0">
+                      {formatTimestamp(
+                        lastMessage?.created_at || thread.created_at
+                      )}
+                    </span>
+                  </div>
+                  <p className="text-gray-300 text-xs lg:text-sm truncate">
+                    {lastMessage?.text || "新しいチャット"}
+                  </p>
+                  {unreadCount > 0 && (
+                    <div className="flex justify-center  mt-1 glass w-8 lg:mt-2">
+                      <span className="bg-brand-500 text-red-500 text-xs rounded-full px-2 py-1">
+                        {unreadCount}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+        </div>
       </div>
 
-      <div className="h-screen flex">
-        {/* Sidebar */}
-        <ChatSidebar
-          chatRooms={chatRooms}
-          selectedRoom={chatState.selectedRoom}
-          onRoomSelect={handleRoomSelect}
-          onNewRoom={handleNewRoom}
-        />
+      {/* Chat Area */}
+      <div className="flex-1 flex flex-col min-h-0">
+        {/* Chat Header */}
+        <div className="glass-card border-b border-pri p-2 lg:p-4 m-2 lg:m-4 mb-0 rounded-t-lg">
+          <h2 className="text-lg lg:text-xl font-bold text-white">
+            {selectedThread?.user_email || "チャット"}
+          </h2>
+          <p className="text-gray-400 text-xs lg:text-sm">
+            最後の活動:{" "}
+            {selectedThread?.created_at
+              ? new Date(selectedThread.created_at).toLocaleString("ja-JP")
+              : "不明"}
+          </p>
+        </div>
 
-        {/* Main Chat Area */}
-        <div className="flex-1 flex flex-col">
-          {chatState.selectedRoom ? (
-            <>
-              {/* Chat Header */}
-              <div className="glass-card mx-4 mt-4 p-4">
-                <h2 className="text-lg font-semibold text-white">
-                  {chatState.selectedRoom.title}
-                </h2>
-                <p className="text-sm text-white/60">
-                  最後の活動:{" "}
-                  {chatState.selectedRoom.lastActivity.toLocaleString("ja-JP")}
-                </p>
-              </div>
-
-              {/* Messages */}
-              <MessageList messages={chatState.messages} />
-
-              {/* Input */}
-              <MessageInput onSendMessage={handleSendMessage} />
-            </>
+        {/* Messages Area */}
+        <div className="flex-1 overflow-y-auto p-2 lg:p-4 space-y-2 lg:space-y-4">
+          {messagesLoading || threadLoading ? (
+            <div className="flex justify-center items-center h-32">
+              <Loader2 className="animate-spin text-white" size={24} />
+            </div>
           ) : (
-            /* No Room Selected */
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center text-white/60">
-                <div className="text-6xl mb-6">💬</div>
-                <h2 className="text-2xl font-semibold mb-4">
-                  チャットルームを選択してください
-                </h2>
-                <p className="text-lg">
-                  左側からチャットルームを選択するか、新しいルームを作成してください
-                </p>
+            currentThreadMessages.map((message: Message) => {
+              const isAdmin = message.sender_kind === "SUPER_ADMIN";
+              const isSupport = message.sender_kind === "support";
+              const isEndUser = message.sender_kind === "END_USER";
+              const timestamp = new Date(message.created_at).toLocaleTimeString(
+                "ja-JP",
+                {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                }
+              );
+
+              return (
+                <div
+                  key={message.id}
+                  className={`flex ${
+                    isAdmin || isSupport ? "justify-start" : "justify-end"
+                  }`}
+                >
+                  <div
+                    className={`max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg xl:max-w-xl ${
+                      isAdmin || isSupport ? "order-1" : "order-2"
+                    }`}
+                  >
+                    {(isAdmin || isSupport) && (
+                      <div className="text-xs text-gray-400 mb-1 px-1">
+                        {isAdmin ? "管理者" : "サポート"}
+                      </div>
+                    )}
+                    <div
+                      className={`glass-card rounded-lg p-2 lg:p-3 ${
+                        isAdmin
+                          ? "bg-green-600 bg-opacity-80 text-white"
+                          : isSupport
+                          ? "bg-glass-medium text-white"
+                          : "bg-brand-500 text-white"
+                      }`}
+                    >
+                      <p className="text-xs lg:text-sm break-words">
+                        {message.text}
+                      </p>
+                      <div className="text-xs text-gray-300 mt-1">
+                        {timestamp}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+
+          {sendMessageMutation.isPending && (
+            <div className="flex justify-end">
+              <div className="max-w-xs sm:max-w-sm md:max-w-md lg:max-w-lg">
+                <div className="glass-card bg-brand-500 rounded-lg p-2 lg:p-3">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-white rounded-full animate-bounce"></div>
+                    <div
+                      className="w-2 h-2 bg-white rounded-full animate-bounce"
+                      style={{ animationDelay: "0.1s" }}
+                    ></div>
+                    <div
+                      className="w-2 h-2 bg-white rounded-full animate-bounce"
+                      style={{ animationDelay: "0.2s" }}
+                    ></div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
+
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* New Room Modal */}
-        <NewRoomModal
-          isOpen={chatState.showNewRoomModal}
-          onClose={handleCloseModal}
-          onSubmit={handleCreateRoom}
-        />
+        {/* Message Input */}
+        <div className="p-2 lg:p-4 mb-4 lg:mb-20">
+          <form onSubmit={handleSendMessage} className="flex gap-2">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              placeholder="メッセージを入力してください..."
+              className="flex-1 glass-input p-2 lg:p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand-400 text-sm lg:text-base"
+              disabled={sendMessageMutation.isPending || !selectedThreadId}
+            />
+            <button
+              type="submit"
+              disabled={
+                !newMessage.trim() ||
+                sendMessageMutation.isPending ||
+                !selectedThreadId
+              }
+              className="bg-brand-500 cursor-pointer hover:bg-brand-600 disabled:bg-gray-600 disabled:cursor-not-allowed text-white p-2 lg:p-3 rounded-lg transition-colors duration-200 flex items-center justify-center min-w-[40px] lg:min-w-[48px]"
+            >
+              {sendMessageMutation.isPending ? (
+                <Loader2 size={16} className="animate-spin lg:w-5 lg:h-5" />
+              ) : (
+                <Send size={16} className="lg:w-5 lg:h-5" />
+              )}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
 };
 
-export default ChatMain;
+export default Chat;
