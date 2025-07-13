@@ -133,7 +133,7 @@ const MainComponent: FC = () => {
 
   const handleThreadSelect = (thread: ChatThread) => {
     setSelectedThread(thread);
-    setIsMobileMenuOpen(false); // Close mobile menu when selecting thread
+    setIsMobileMenuOpen(false);
   };
 
   const getLastMessageTime = (thread: ChatThread) => {
