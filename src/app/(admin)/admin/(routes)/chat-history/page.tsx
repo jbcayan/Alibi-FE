@@ -9,6 +9,11 @@ import {
   Loader2,
   User,
   Shield,
+  MoreVertical,
+  Edit3,
+  Trash2,
+  Check,
+  XCircle,
 } from "lucide-react";
 import Button from "@/components/admin/ui/Button";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
@@ -48,9 +53,16 @@ const MainComponent: FC = () => {
   const [messageText, setMessageText] = useState<string>("");
   const [isSending, setIsSending] = useState<boolean>(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState<boolean>(false);
+  const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
+  const [editingText, setEditingText] = useState<string>("");
+  const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState<number | null>(null);
+  const [isUpdating, setIsUpdating] = useState<number | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { useThreads, useSendMessage } = useChatQueries();
+  const { useThreads, useSendMessage, useUpdateMessage, useDeleteMessage } =
+    useChatQueries();
   const {
     data: threadsData,
     isLoading,
@@ -58,6 +70,8 @@ const MainComponent: FC = () => {
     refetch,
   } = useThreads(currentPage);
   const sendMessageMutation = useSendMessage();
+  const updateMessageMutation = useUpdateMessage();
+  const deleteMessageMutation = useDeleteMessage();
 
   const threads = threadsData?.results || [];
 
@@ -65,6 +79,23 @@ const MainComponent: FC = () => {
   useEffect(() => {
     scrollToBottom();
   }, [selectedThread?.messages]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setDropdownOpen(null);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -131,9 +162,81 @@ const MainComponent: FC = () => {
     }
   };
 
+  const handleEditMessage = (message: ChatMessage) => {
+    setEditingMessageId(message.id);
+    setEditingText(message.text);
+    setDropdownOpen(null);
+  };
+
+  const handleSaveEdit = async (messageId: number) => {
+    if (!editingText.trim() || !selectedThread) return;
+
+    setIsUpdating(messageId);
+
+    try {
+      await updateMessageMutation.mutateAsync({
+        messageId,
+        updateData: { text: editingText.trim() },
+      });
+
+      // Update the selected thread with the edited message
+      const updatedThread = {
+        ...selectedThread,
+        messages: selectedThread.messages.map((msg) =>
+          msg.id === messageId ? { ...msg, text: editingText.trim() } : msg
+        ),
+      };
+
+      setSelectedThread(updatedThread);
+      setEditingMessageId(null);
+      setEditingText("");
+
+      // Refetch threads to update the sidebar
+      refetch();
+    } catch (error) {
+      console.error("Failed to update message:", error);
+    } finally {
+      setIsUpdating(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingMessageId(null);
+    setEditingText("");
+  };
+
+  const handleDeleteMessage = async (messageId: number) => {
+    if (!selectedThread) return;
+
+    setIsDeleting(messageId);
+
+    try {
+      await deleteMessageMutation.mutateAsync(messageId);
+
+      // Update the selected thread by removing the deleted message
+      const updatedThread = {
+        ...selectedThread,
+        messages: selectedThread.messages.filter((msg) => msg.id !== messageId),
+      };
+
+      setSelectedThread(updatedThread);
+      setDropdownOpen(null);
+
+      // Refetch threads to update the sidebar
+      refetch();
+    } catch (error) {
+      console.error("Failed to delete message:", error);
+    } finally {
+      setIsDeleting(null);
+    }
+  };
+
   const handleThreadSelect = (thread: ChatThread) => {
     setSelectedThread(thread);
     setIsMobileMenuOpen(false);
+    setEditingMessageId(null);
+    setEditingText("");
+    setDropdownOpen(null);
   };
 
   const getLastMessageTime = (thread: ChatThread) => {
@@ -431,6 +534,7 @@ const MainComponent: FC = () => {
                     index === 0 ||
                     selectedThread.messages[index - 1].sender_kind !==
                       message.sender_kind;
+                  const isEditing = editingMessageId === message.id;
 
                   return (
                     <div
@@ -461,37 +565,128 @@ const MainComponent: FC = () => {
 
                         {/* Message Bubble */}
                         <div
-                          className={`px-3 md:px-4 py-2 rounded-2xl ${
+                          className={`pl-4 pr-4 md:pr-8  py-2 rounded-2xl relative group ${
                             isAdmin
                               ? "bg-blue-500 text-white rounded-br-md"
-                              : "bg-gray-100 text-gray-900 rounded-bl-md"
+                              : "bg-gray-200 text-gray-900 rounded-bl-md"
                           } ${
                             !showAvatar
                               ? isAdmin
-                                ? "mr-8 md:mr-10"
+                                ? "mr-8 md:mr-10 "
                                 : "ml-8 md:ml-10"
                               : ""
                           }`}
                         >
-                          <p className="text-sm whitespace-pre-wrap break-words">
-                            {message.text}
-                          </p>
+                          {/* Three-dots menu for admin messages */}
+                          {/* Three-dots menu for admin messages */}
+                          {isAdmin && !isEditing && (
+                            <div className="absolute top-1 right-1 md:top-2 md:right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                              <div className="relative" ref={dropdownRef}>
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDropdownOpen(
+                                      dropdownOpen === message.id
+                                        ? null
+                                        : message.id
+                                    );
+                                  }}
+                                  className="p-1.5 md:p-1 rounded-full hover:bg-blue-400 hover:bg-opacity-30 transition-colors touch-manipulation"
+                                >
+                                  <MoreVertical className="w-5 h-5 md:w-4 md:h-4 text-white " />
+                                </button>
+
+                                {dropdownOpen === message.id && (
+                                  <div className="absolute right-0 top-full mt-1 w-32 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                                    <button
+                                      onClick={() => handleEditMessage(message)}
+                                      className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 flex items-center space-x-2"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                      <span>編集</span>
+                                    </button>
+                                    <button
+                                      onClick={() =>
+                                        handleDeleteMessage(message.id)
+                                      }
+                                      disabled={isDeleting === message.id}
+                                      className="w-full px-3 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center space-x-2 disabled:opacity-50"
+                                    >
+                                      {isDeleting === message.id ? (
+                                        <>
+                                          <Loader2 className="w-4 h-4 animate-spin" />
+                                          <span>削除中...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Trash2 className="w-4 h-4" />
+                                          <span>削除</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Message Content */}
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <textarea
+                                value={editingText}
+                                onChange={(e) => setEditingText(e.target.value)}
+                                className="w-full px-2 py-1 text-sm text-gray-900 bg-white border border-gray-300 rounded resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                rows={2}
+                                autoFocus
+                              />
+                              <div className="flex space-x-2">
+                                <button
+                                  onClick={() => handleSaveEdit(message.id)}
+                                  disabled={
+                                    !editingText.trim() ||
+                                    isUpdating === message.id
+                                  }
+                                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                                >
+                                  {isUpdating === message.id ? (
+                                    <Loader2 className="w-3 h-3 animate-spin" />
+                                  ) : (
+                                    <Check className="w-3 h-3" />
+                                  )}
+                                  <span>保存</span>
+                                </button>
+                                <button
+                                  onClick={handleCancelEdit}
+                                  className="flex items-center space-x-1 px-2 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
+                                >
+                                  <XCircle className="w-3 h-3" />
+                                  <span>キャンセル</span>
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <p className="text-sm whitespace-pre-wrap break-words">
+                              {message.text}
+                            </p>
+                          )}
 
                           {/* Message Info */}
-                          <div
-                            className={`flex items-center mt-1 space-x-2 ${
-                              isAdmin ? "justify-end" : "justify-start"
-                            }`}
-                          >
-                            <span
-                              className={`text-xs ${
-                                isAdmin ? "text-blue-100" : "text-gray-500"
+                          {!isEditing && (
+                            <div
+                              className={`flex items-center mt-1 space-x-2 ${
+                                isAdmin ? "justify-end" : "justify-start"
                               }`}
                             >
-                              {formatTimeOnly(message.created_at)}
-                            </span>
-                            {/* Removed unread indicator for user messages */}
-                          </div>
+                              <span
+                                className={`text-xs ${
+                                  isAdmin ? "text-blue-100" : "text-gray-500"
+                                }`}
+                              >
+                                {formatTimeOnly(message.created_at)}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
