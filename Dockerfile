@@ -8,8 +8,7 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 
 # Install only production dependencies
-RUN npm ci --omit=dev
-
+RUN npm ci
 # Copy all files except those in .dockerignore
 COPY . .
 
