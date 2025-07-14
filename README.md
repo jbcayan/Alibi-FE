@@ -42,6 +42,7 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 ```
 
+```
 src/
 ├── app/ # Next.js App Router
 │ ├── (auth)/
@@ -213,7 +214,5 @@ src/
 ├── postcss.config.js
 ├── next.config.js
 └── tsconfig.json
-
-```
 
 ```
