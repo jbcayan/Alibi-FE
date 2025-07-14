@@ -8,10 +8,15 @@ export const useChatQueries = () => {
   return {
     // === MESSAGE QUERIES ===
 
-    useMessages: (page = 1, limit = 20, options?: { enabled: boolean }) => {
+    useMessages: (
+      page = 1,
+      limit = 20,
+      options?: { enabled: boolean },
+      threadId?: number
+    ) => {
       return useQuery({
-        queryKey: CHAT_KEYS.messagesList({ page, limit }),
-        queryFn: () => chatAPIClient.getMessages(page, limit),
+        queryKey: CHAT_KEYS.messagesList({ page, limit, thread: threadId }),
+        queryFn: () => chatAPIClient.getMessages(page, limit, threadId),
         enabled: options?.enabled ?? true,
       });
     },
