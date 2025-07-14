@@ -8,10 +8,11 @@ export const useChatQueries = () => {
   return {
     // === MESSAGE QUERIES ===
 
-    useMessages: (page = 1, limit = 20, p0: { enabled: boolean }) => {
+    useMessages: (page = 1, limit = 20, options?: { enabled: boolean }) => {
       return useQuery({
         queryKey: CHAT_KEYS.messagesList({ page, limit }),
         queryFn: () => chatAPIClient.getMessages(page, limit),
+        enabled: options?.enabled ?? true,
       });
     },
 
@@ -27,7 +28,9 @@ export const useChatQueries = () => {
       return useMutation({
         mutationFn: chatAPIClient.sendMessage,
         onSuccess: () => {
+          // Invalidate all message queries to refresh the list
           queryClient.invalidateQueries({ queryKey: CHAT_KEYS.messages() });
+          // Invalidate all thread queries to update unread counts
           queryClient.invalidateQueries({ queryKey: CHAT_KEYS.threads() });
         },
       });
@@ -43,12 +46,26 @@ export const useChatQueries = () => {
           updateData: any;
         }) => chatAPIClient.updateMessage(messageId, updateData),
         onSuccess: (data, variables) => {
+          // Update the specific message in cache
           queryClient.setQueryData(
             CHAT_KEYS.messageDetail(variables.messageId),
             data
           );
 
-          queryClient.invalidateQueries({ queryKey: CHAT_KEYS.messages() });
+          // Invalidate all message queries to refresh the list
+          queryClient.invalidateQueries({
+            queryKey: CHAT_KEYS.messages(),
+            exact: false,
+          });
+
+          // Invalidate all thread queries to update last message
+          queryClient.invalidateQueries({
+            queryKey: CHAT_KEYS.threads(),
+            exact: false,
+          });
+        },
+        onError: (error) => {
+          console.error("Failed to update message:", error);
         },
       });
     },
@@ -56,9 +73,26 @@ export const useChatQueries = () => {
     useDeleteMessage: () => {
       return useMutation({
         mutationFn: chatAPIClient.deleteMessage,
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: CHAT_KEYS.messages() });
-          queryClient.invalidateQueries({ queryKey: CHAT_KEYS.threads() });
+        onSuccess: (data, messageId) => {
+          // Remove the message from cache
+          queryClient.removeQueries({
+            queryKey: CHAT_KEYS.messageDetail(messageId),
+          });
+
+          // Invalidate all message queries to refresh the list
+          queryClient.invalidateQueries({
+            queryKey: CHAT_KEYS.messages(),
+            exact: false,
+          });
+
+          // Invalidate all thread queries to update last message and counts
+          queryClient.invalidateQueries({
+            queryKey: CHAT_KEYS.threads(),
+            exact: false,
+          });
+        },
+        onError: (error) => {
+          console.error("Failed to delete message:", error);
         },
       });
     },
@@ -72,11 +106,11 @@ export const useChatQueries = () => {
       });
     },
 
-    useThread: (threadId: number, p0: { enabled: boolean }) => {
+    useThread: (threadId: number, options?: { enabled: boolean }) => {
       return useQuery({
         queryKey: CHAT_KEYS.threadDetail(threadId),
         queryFn: () => chatAPIClient.getThread(threadId),
-        enabled: !!threadId,
+        enabled: options?.enabled ?? !!threadId,
       });
     },
 
@@ -84,7 +118,14 @@ export const useChatQueries = () => {
       return useMutation({
         mutationFn: chatAPIClient.createThread,
         onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: CHAT_KEYS.threads() });
+          // Invalidate all thread queries to refresh the list
+          queryClient.invalidateQueries({
+            queryKey: CHAT_KEYS.threads(),
+            exact: false,
+          });
+        },
+        onError: (error) => {
+          console.error("Failed to create thread:", error);
         },
       });
     },
@@ -99,11 +140,20 @@ export const useChatQueries = () => {
           updateData: any;
         }) => chatAPIClient.updateThread(threadId, updateData),
         onSuccess: (data, variables) => {
+          // Update the specific thread in cache
           queryClient.setQueryData(
             CHAT_KEYS.threadDetail(variables.threadId),
             data
           );
-          queryClient.invalidateQueries({ queryKey: CHAT_KEYS.threads() });
+
+          // Invalidate all thread queries to refresh the list
+          queryClient.invalidateQueries({
+            queryKey: CHAT_KEYS.threads(),
+            exact: false,
+          });
+        },
+        onError: (error) => {
+          console.error("Failed to update thread:", error);
         },
       });
     },
@@ -111,8 +161,20 @@ export const useChatQueries = () => {
     useDeleteThread: () => {
       return useMutation({
         mutationFn: chatAPIClient.deleteThread,
-        onSuccess: () => {
-          queryClient.invalidateQueries({ queryKey: CHAT_KEYS.threads() });
+        onSuccess: (data, threadId) => {
+          // Remove the thread from cache
+          queryClient.removeQueries({
+            queryKey: CHAT_KEYS.threadDetail(threadId),
+          });
+
+          // Invalidate all thread queries to refresh the list
+          queryClient.invalidateQueries({
+            queryKey: CHAT_KEYS.threads(),
+            exact: false,
+          });
+        },
+        onError: (error) => {
+          console.error("Failed to delete thread:", error);
         },
       });
     },
@@ -121,8 +183,23 @@ export const useChatQueries = () => {
       return useMutation({
         mutationFn: chatAPIClient.markAllRead,
         onSuccess: (data, threadId) => {
+          // Update the specific thread in cache
           queryClient.setQueryData(CHAT_KEYS.threadDetail(threadId), data);
-          queryClient.invalidateQueries({ queryKey: CHAT_KEYS.threads() });
+
+          // Invalidate all thread queries to refresh unread counts
+          queryClient.invalidateQueries({
+            queryKey: CHAT_KEYS.threads(),
+            exact: false,
+          });
+
+          // Invalidate message queries to update read status
+          queryClient.invalidateQueries({
+            queryKey: CHAT_KEYS.messages(),
+            exact: false,
+          });
+        },
+        onError: (error) => {
+          console.error("Failed to mark messages as read:", error);
         },
       });
     },
