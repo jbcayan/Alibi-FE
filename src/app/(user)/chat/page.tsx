@@ -69,11 +69,11 @@ const Chat = () => {
     selectedThreadId!,
     { enabled: !!selectedThreadId }
   );
-
   const { data: messagesData, isLoading: messagesLoading } = useMessages(
     1,
     50,
-    { enabled: !!selectedThreadId }
+    { enabled: !!selectedThreadId },
+    selectedThreadId
   );
 
   const sendMessageMutation = useSendMessage();

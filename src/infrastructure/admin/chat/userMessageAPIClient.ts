@@ -13,11 +13,15 @@ import { baseUrl } from "@/constants/baseApi";
 export const chatAPIClient = {
   // === MESSAGE API CALLS ===
 
-  getMessages: async (page = 1, limit = 20): Promise<MessagesResponse> => {
+  getMessages: async (
+    page = 1,
+    limit = 20,
+    threadId?: number
+  ): Promise<MessagesResponse> => {
     const response = await axiosInstance.get<MessagesResponse>(
       `${baseUrl}/chat/messages/`,
       {
-        params: { page, limit },
+        params: { page, limit, thread: threadId },
       }
     );
     return response.data;
