@@ -18,9 +18,9 @@ export const useChatQueries = () => {
         queryKey: CHAT_KEYS.messagesList({ page, limit, thread: threadId }),
         queryFn: () => chatAPIClient.getMessages(page, limit, threadId),
         enabled: options?.enabled ?? true,
+        refetchInterval: 2000, // every 1 seconds
       });
     },
-
     useMessage: (messageId: number) => {
       return useQuery({
         queryKey: CHAT_KEYS.messageDetail(messageId),
@@ -108,6 +108,7 @@ export const useChatQueries = () => {
       return useQuery({
         queryKey: CHAT_KEYS.threadsList({ page }),
         queryFn: () => chatAPIClient.getThreads(page),
+        refetchInterval: 2000,
       });
     },
 
