@@ -4,19 +4,18 @@ FROM node:20-alpine
 # Set working directory inside the container
 WORKDIR /app
 
-# Install dependencies based on the lock file
+# Copy and install dependencies
 COPY package.json package-lock.json ./
-
-# Install only production dependencies
 RUN npm ci
-# Copy all files except those in .dockerignore
+
+# Copy all project files
 COPY . .
 
-# Build the Next.js app
+# Build the app
 RUN npm run build
 
-# Expose Next.js default port
+# Expose the port
 EXPOSE 3000
 
-# Start the application
-CMD ["npm", "start"]
+# Start the production server
+CMD ["npm", "run", "start:prod"]

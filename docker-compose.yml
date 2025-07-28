@@ -1,12 +1,10 @@
+version: "3.8"
+
 services:
   web:
     build: .
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=development
-    volumes:
-      - .:/app
-      - /app/node_modules
-    command: npm run build
+      - NODE_ENV=production
     restart: unless-stopped
