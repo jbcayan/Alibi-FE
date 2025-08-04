@@ -3,9 +3,9 @@ import React, { useEffect, useState } from "react";
 import Image from "next/image";
 import { userApiClient } from "@/infrastructure/user/userAPIClient";
 import { Mail, User2 } from "lucide-react";
-import Loading from "@/components/loading/Loading";
-import { user_role } from "@/constants/role";
 import Spinner from "@/components/ui/Spinner";
+import { user_role } from "@/constants/role";
+import Link from "next/link";
 
 interface UserProfile {
   email: string;
@@ -73,6 +73,16 @@ const Profile = () => {
           <p className="text-lg font-medium ml-6">
             {profile?.kind === user_role.USER ? "END USER" : "SUPER ADMIN"}
           </p>
+        </div>
+
+        {/* Reset Password Button */}
+        <div className="mt-6 text-center">
+          <Link
+            href="/reset-password"
+            className="inline-block glass text-white px-4 py-2 rounded transition duration-300"
+          >
+            パスワードをリセット
+          </Link>
         </div>
       </div>
     </div>
