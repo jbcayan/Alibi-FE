@@ -1,3 +1,9 @@
+import {
+  PasswordResetConfirmData,
+  PasswordResetConfirmResponse,
+  PasswordResetRequestData,
+  PasswordResetRequestResponse,
+} from "@/types/user/types";
 import { GalleryResponse } from "../gallery/utils/types";
 import {
   LoginResponse,
@@ -25,6 +31,7 @@ class UserAPIClient {
       ...(token && { Authorization: `Bearer ${token}` }),
     };
   }
+
   public async userRegister(registerData: {
     email: string;
     password: string;
@@ -74,6 +81,68 @@ class UserAPIClient {
     }
   }
 
+  // ✅ FIXED: Password Reset Request (Step 1 - Send email)
+  public async passwordResetRequest(
+    data: PasswordResetRequestData
+  ): Promise<PasswordResetRequestResponse> {
+    try {
+      const response = await fetch(
+        `${this.apiUrl}/users/password-reset-request`,
+        {
+          method: "POST",
+          headers: this.getHeaders(),
+          body: JSON.stringify(data), // ✅ Fixed: Added JSON.stringify
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Password reset request failed");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Password reset request error:", error);
+      throw error;
+    }
+  }
+
+  // ✅ FIXED: Password Reset Confirm (Step 2 - Set new password)
+  public async passwordResetConfirm(
+    data: PasswordResetConfirmData
+  ): Promise<PasswordResetConfirmResponse> {
+    try {
+      const { uid, token, new_password, confirm_password } = data;
+
+      // Send only password data in body, uid and token in URL
+      const resetData = {
+        new_password,
+        confirm_password,
+      };
+
+      const response = await fetch(
+        `${this.apiUrl}/users/password-reset-confirm/${uid}/${token}`,
+        {
+          method: "POST",
+          headers: this.getHeaders(),
+          body: JSON.stringify(resetData), // ✅ Fixed: Added JSON.stringify
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(
+          errorData.detail || "Password reset confirmation failed"
+        );
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Password reset confirm error:", error);
+      throw error;
+    }
+  }
+
   public async getUserProfile(): Promise<{ email: string; kind: string }> {
     try {
       const response = await fetch(`${this.apiUrl}/users/profile`, {
@@ -99,8 +168,15 @@ class UserAPIClient {
         method: "DELETE",
         headers: this.getHeaders(),
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to delete user");
+      }
+
+      return await response.json();
     } catch (error) {
-      console.error("Profile fetch error:", error);
+      console.error("User delete error:", error);
       throw error;
     }
   }
@@ -251,18 +327,25 @@ class UserAPIClient {
       throw error;
     }
   }
+
   async verifyOtp(data: { otp: string }): Promise<{ detail: string }> {
-    const response = await fetch(`${this.apiUrl}/users/verify-otp`, {
-      method: "POST",
-      headers: this.getHeaders(),
-      body: JSON.stringify(data),
-    });
+    try {
+      const response = await fetch(`${this.apiUrl}/users/verify-otp`, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify(data),
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || `OTP verification failed`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("OTP verification error:", error);
+      throw error;
     }
-
-    return response.json();
   }
 }
 
