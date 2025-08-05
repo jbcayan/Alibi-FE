@@ -83,6 +83,7 @@ const LoginPage = () => {
           expires: 7,
           path: "/",
         });
+        console.log({ user: response });
 
         localStorage.setItem("accessToken", response.access);
         localStorage.setItem("role", response.user.kind);
@@ -182,6 +183,13 @@ const LoginPage = () => {
                   </p>
                 )}
               </div>
+            </div>
+            <div>
+              <Link href={"/reset-password"}>
+                <p className="text-blue-400 cursor-pointer text-sm text-right">
+                  Reset Password
+                </p>
+              </Link>
             </div>
 
             <Button

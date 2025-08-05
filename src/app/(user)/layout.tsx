@@ -17,7 +17,12 @@ const UserDashboardLayout = ({ children }: Props) => {
   const pathname = usePathname();
 
   // Define routes where sidebar and menu should be hidden
-  const hideUIRoutes = ["/login", "/register", "/user/verify-otp"];
+  const hideUIRoutes = [
+    "/login",
+    "/register",
+    "/user/verify-otp",
+    "/reset-password",
+  ];
   const shouldHideUI = hideUIRoutes.includes(pathname);
 
   const handleMenuToggle = () => setSidebarOpen(!sidebarOpen);

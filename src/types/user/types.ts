@@ -17,3 +17,34 @@ export interface TUser {
   is_subscribed: boolean;
   kind: "END_USER" | "SUPER_ADMIN";
 }
+
+// Add to your existing types file or create a new one: types/passwordReset.ts
+
+export interface PasswordResetRequestData {
+  email: string;
+}
+
+export interface PasswordResetConfirmData {
+  uid: string;
+  token: string;
+  new_password: string;
+  confirm_password: string;
+}
+
+export interface PasswordResetRequestResponse {
+  detail: string;
+}
+
+export interface PasswordResetConfirmResponse {
+  detail: string;
+}
+
+// Form data types for components
+export interface ResetRequestFormData {
+  email: string;
+}
+
+export interface ResetConfirmFormData {
+  new_password: string;
+  confirm_password: string;
+}
