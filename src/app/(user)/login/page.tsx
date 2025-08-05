@@ -187,7 +187,7 @@ const LoginPage = () => {
             <div>
               <Link href={"/reset-password"}>
                 <p className="text-blue-400 cursor-pointer text-sm text-right">
-                  Reset Password
+                  Forgot Password
                 </p>
               </Link>
             </div>
