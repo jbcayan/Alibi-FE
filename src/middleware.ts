@@ -12,7 +12,7 @@ export function middleware(request: NextRequest) {
   }
 
   // Define route categories
-  const publicRoutes = ["/login", "/register"];
+  const publicRoutes = ["/login", "/register", "/reset-password"];
   const otpRoutes = ["/user/verify-otp"]; // OTP routes should be accessible during registration flow
   const adminRoutes = ["/admin"];
   const subscriptionRoutes = ["/subscription"];

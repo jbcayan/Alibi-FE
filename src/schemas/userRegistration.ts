@@ -9,7 +9,7 @@ export const registerSchema = z
 
     password: z
       .string()
-      .min(6, "パスワードは6文字以上で入力してください")
+      .min(8, "パスワードは8文字以上で入力してください")
       .regex(/[A-Z]/, "パスワードには少なくとも1つの大文字を含めてください"),
 
     confirm_password: z.string(),
