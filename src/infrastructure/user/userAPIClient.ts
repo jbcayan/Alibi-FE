@@ -81,7 +81,6 @@ class UserAPIClient {
     }
   }
 
-  // ✅ FIXED: Password Reset Request (Step 1 - Send email)
   public async passwordResetRequest(
     data: PasswordResetRequestData
   ): Promise<PasswordResetRequestResponse> {
@@ -107,7 +106,6 @@ class UserAPIClient {
     }
   }
 
-  // ✅ FIXED: Password Reset Confirm (Step 2 - Set new password)
   public async passwordResetConfirm(
     data: PasswordResetConfirmData
   ): Promise<PasswordResetConfirmResponse> {
@@ -139,6 +137,30 @@ class UserAPIClient {
       return await response.json();
     } catch (error) {
       console.error("Password reset confirm error:", error);
+      throw error;
+    }
+  }
+
+  public async changePassword(data: {
+    old_password: string;
+    new_password: string;
+    confirm_password: string;
+  }): Promise<{ detail: string }> {
+    try {
+      const response = await fetch(`${this.apiUrl}/users/change-password`, {
+        method: "PUT",
+        headers: this.getHeaders(), // Automatically includes Authorization
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Password change failed");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Change password error:", error);
       throw error;
     }
   }
