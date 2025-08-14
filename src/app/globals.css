@@ -154,21 +154,7 @@ body {
 
 /* Main Background */
 .main_gradient_bg {
-  max-width: 100vw;
-  overflow-x: hidden;
-  font-family: "Plus Jakarta Sans", sans-serif;
-  min-height: 100vh;
-  color: rgb(var(--foreground-rgb));
-  background-color: hsla(281, 93%, 6%, 1);
-  background-image: radial-gradient(
-      at 4% 21%,
-      hsla(240, 100%, 10%, 0.63) 0px,
-      transparent 50%
-    ),
-    radial-gradient(at 98% 1%, hsla(289, 100%, 23%, 0.82) 0px, transparent 50%),
-    radial-gradient(at 0% 50%, hsla(255, 0%, 0%, 1) 0px, transparent 50%);
-  background-repeat: no-repeat;
-  background-size: cover;
+  background-color: #120d09;
 }
 
 /* Glass Card Styles */

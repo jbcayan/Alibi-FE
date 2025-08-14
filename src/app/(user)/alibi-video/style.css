@@ -5,8 +5,7 @@
   font-family: var(--font-family-sans);
   min-height: 100vh;
   color: rgb(var(--foreground-rgb));
-  background-color: var(--color-app-dark);
-  background-image: var(--background-image-gradient-dark);
+  background-color: #120d09;
   background-repeat: no-repeat;
   background-size: cover;
 }
