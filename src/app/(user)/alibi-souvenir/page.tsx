@@ -347,144 +347,154 @@ const AlibiSouvenir = () => {
 
         {orderModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-            <div className="relative max-w-xl w-full bg-gradient-to-br from-white/10 to-blue-100/10 border border-white/20 shadow-2xl rounded-xl p-6 backdrop-blur-2xl text-white overflow-hidden">
-              <div className="pb-4">
-                {/* Title */}
-                <h3 className="text-xl font-semibold text-center  ">
+            <div className="relative max-w-xl w-full max-h-[90vh] bg-gradient-to-br from-white/10 to-blue-100/10 border border-white/20 shadow-2xl rounded-xl backdrop-blur-2xl text-white overflow-hidden flex flex-col">
+              {/* Header - Fixed at top */}
+              <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-white/10">
+                <h3 className="text-xl font-semibold text-center pr-8">
                   {orderModal.title}
                 </h3>
-              </div>
-              {/* Close Button */}
-              <button
-                className="absolute top-4 right-4 text-white/80 hover:text-white   w-9 h-9 flex items-center justify-center text-4xl cursor-pointer transition-all"
-                onClick={() => setOrderModal(null)}
-              >
-                <X size={30} className="hover:text-red-500" />
-              </button>
-
-              {/* Image Preview */}
-              <div className="flex justify-center  ">
-                <div className="w-full h-52 sm:h-60 md:h-64 rounded-2xl overflow-hidden border border-white/20 shadow-lg bg-white/10 backdrop-blur-md mb-6">
-                  <img
-                    src={orderModal.file}
-                    alt={orderModal.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-
-              {/* Form */}
-              <form
-                className="w-full flex flex-col gap-4"
-                onSubmit={handleSubmit(onOrderSubmit)}
-              >
-                {/* Quantity */}
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-white/80">
-                    Quantity
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    {...register("quantity", { required: true, min: 1 })}
-                    className="w-full p-2 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
-                    placeholder="Enter quantity"
-                  />
-                  {errors.quantity && (
-                    <span className="text-xs text-red-400">
-                      Quantity must be at least 1.
-                    </span>
-                  )}
-                </div>
-
-                {/* Amount */}
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-white/80 flex items-center gap-2">
-                    <CreditCard className="w-4 h-4" />
-                    Amount (¥)
-                  </label>
-                  <input
-                    type="number"
-                    min={1}
-                    step="0.01"
-                    {...register("amount", {
-                      required: "Amount is required",
-                      min: { value: 1, message: "Amount must be at least ¥1" },
-                      valueAsNumber: true,
-                    })}
-                    className="w-full p-2 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
-                    placeholder="Enter amount in yen"
-                  />
-                  {errors.amount && (
-                    <span className="text-xs text-red-400">
-                      {errors.amount.message}
-                    </span>
-                  )}
-                </div>
-
-                {/* Description */}
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-white/80">
-                    Description
-                  </label>
-                  <textarea
-                    {...register("description", { required: true })}
-                    className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
-                    placeholder="Provide order details..."
-                  />
-                  {errors.description && (
-                    <span className="text-xs text-red-400">
-                      Description is required.
-                    </span>
-                  )}
-                </div>
-
-                {/* Special Note */}
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-white/80">
-                    Special Note
-                  </label>
-                  <textarea
-                    {...register("special_note")}
-                    className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
-                    placeholder="Optional notes..."
-                  />
-                </div>
-
-                {/* Delivery Date */}
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-white/80">
-                    Desired Delivery Date
-                  </label>
-                  <input
-                    type="date"
-                    {...register("desire_delivery_date", { required: true })}
-                    className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
-                  />
-                  {errors.desire_delivery_date && (
-                    <span className="text-xs text-red-400">
-                      Delivery date is required.
-                    </span>
-                  )}
-                </div>
-
-                {/* Submit */}
-                <Button
-                  type="submit"
-                  variant="glassSec"
-                  size="md"
-                  className="rounded-lg shadow-md border border-white/20 mt-2 w-full "
-                  loading={submitting}
-                  disabled={submitting}
+                {/* Close Button */}
+                <button
+                  className="absolute top-4 right-4 text-white/80 hover:text-white w-9 h-9 flex items-center justify-center text-4xl cursor-pointer transition-all"
+                  onClick={() => setOrderModal(null)}
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <CreditCard className="w-6 h-6" />
-                    <span>
-                      {submitting ? "Processing..." : "Proceed to Payment"}
-                    </span>
+                  <X size={30} className="hover:text-red-500" />
+                </button>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="flex-1 overflow-y-auto px-6 pb-6">
+                {/* Image Preview */}
+                <div className="flex justify-center mb-6">
+                  <div className="w-full h-52 sm:h-60 md:h-64 rounded-2xl overflow-hidden border border-white/20 shadow-lg bg-white/10 backdrop-blur-md">
+                    <img
+                      src={orderModal.file}
+                      alt={orderModal.title}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
-                </Button>
-              </form>
+                </div>
+
+                {/* Form */}
+                <form
+                  className="w-full flex flex-col gap-4"
+                  onSubmit={handleSubmit(onOrderSubmit)}
+                >
+                  {/* Quantity */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-white/80">
+                      Quantity
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      {...register("quantity", { required: true, min: 1 })}
+                      className="w-full p-2 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
+                      placeholder="Enter quantity"
+                    />
+                    {errors.quantity && (
+                      <span className="text-xs text-red-400">
+                        Quantity must be at least 1.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Amount */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-white/80 flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      Amount (¥)
+                    </label>
+                    <input
+                      type="number"
+                      min={1}
+                      step="0.01"
+                      {...register("amount", {
+                        required: "Amount is required",
+                        min: {
+                          value: 1,
+                          message: "Amount must be at least ¥1",
+                        },
+                        valueAsNumber: true,
+                      })}
+                      className="w-full p-2 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
+                      placeholder="Enter amount in yen"
+                    />
+                    {errors.amount && (
+                      <span className="text-xs text-red-400">
+                        {errors.amount.message}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-white/80">
+                      Description
+                    </label>
+                    <textarea
+                      {...register("description", { required: true })}
+                      className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none resize-none"
+                      rows={3}
+                      placeholder="Provide order details..."
+                    />
+                    {errors.description && (
+                      <span className="text-xs text-red-400">
+                        Description is required.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Special Note */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-white/80">
+                      Special Note
+                    </label>
+                    <textarea
+                      {...register("special_note")}
+                      className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none resize-none"
+                      rows={2}
+                      placeholder="Optional notes..."
+                    />
+                  </div>
+
+                  {/* Delivery Date */}
+                  <div>
+                    <label className="block text-sm font-medium mb-1 text-white/80">
+                      Desired Delivery Date
+                    </label>
+                    <input
+                      type="date"
+                      {...register("desire_delivery_date", { required: true })}
+                      className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
+                    />
+                    {errors.desire_delivery_date && (
+                      <span className="text-xs text-red-400">
+                        Delivery date is required.
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Submit Button - Fixed at bottom */}
+                  <div className="pt-4 border-t border-white/10 mt-2 -mx-6 px-6 bg-gradient-to-t from-white/5 to-transparent">
+                    <Button
+                      type="submit"
+                      variant="glassSec"
+                      size="md"
+                      className="rounded-lg shadow-md border border-white/20 w-full"
+                      loading={submitting}
+                      disabled={submitting}
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <CreditCard className="w-6 h-6" />
+                        <span>
+                          {submitting ? "Processing..." : "Proceed to Payment"}
+                        </span>
+                      </div>
+                    </Button>
+                  </div>
+                </form>
+              </div>
             </div>
           </div>
         )}
