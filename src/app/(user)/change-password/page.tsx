@@ -18,7 +18,7 @@ const changePasswordSchema = z
     new_password: z
       .string()
       .min(1, "新しいパスワードを入力してください")
-      .min(8, "新しいパスワードは8文字以上で入力してください"),
+      .min(6, "新しいパスワードは6文字以上で入力してください"),
     confirm_password: z.string().min(1, "確認用パスワードを入力してください"),
   })
   .refine((data) => data.new_password === data.confirm_password, {

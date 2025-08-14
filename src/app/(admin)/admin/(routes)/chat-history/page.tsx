@@ -57,20 +57,29 @@ const MainComponent: FC = () => {
   const [dropdownOpen, setDropdownOpen] = useState<number | null>(null);
   const [isDeleting, setIsDeleting] = useState<number | null>(null);
   const [isUpdating, setIsUpdating] = useState<number | null>(null);
+  const [isMarkingRead, setIsMarkingRead] = useState<boolean>(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  const { useThreads, useSendMessage, useUpdateMessage, useDeleteMessage } =
-    useChatQueries();
+  const {
+    useThreads,
+    useSendMessage,
+    useUpdateMessage,
+    useDeleteMessage,
+    useMarkAllRead,
+  } = useChatQueries();
+
   const {
     data: threadsData,
     isLoading,
     error,
     refetch,
   } = useThreads(currentPage);
+
   const sendMessageMutation = useSendMessage();
   const updateMessageMutation = useUpdateMessage();
   const deleteMessageMutation = useDeleteMessage();
+  const markAllReadMutation = useMarkAllRead();
 
   const threads = threadsData?.results || [];
 
@@ -230,12 +239,50 @@ const MainComponent: FC = () => {
     }
   };
 
-  const handleThreadSelect = (thread: ChatThread) => {
+  // Mark all messages as read when thread is selected
+  const handleMarkAllRead = async (threadId: number) => {
+    setIsMarkingRead(true);
+
+    try {
+      await markAllReadMutation.mutateAsync(threadId);
+
+      // Update the selected thread to mark all messages as read
+      if (selectedThread && selectedThread.id === threadId) {
+        const updatedThread = {
+          ...selectedThread,
+          messages: selectedThread.messages.map((msg) => ({
+            ...msg,
+            is_read: true,
+          })),
+        };
+        setSelectedThread(updatedThread);
+      }
+
+      // Refetch threads to update unread counts in sidebar
+      refetch();
+    } catch (error) {
+      console.error("Failed to mark messages as read:", error);
+    } finally {
+      setIsMarkingRead(false);
+    }
+  };
+
+  const handleThreadSelect = async (thread: ChatThread) => {
     setSelectedThread(thread);
     setIsMobileMenuOpen(false);
     setEditingMessageId(null);
     setEditingText("");
     setDropdownOpen(null);
+
+    // Check if there are unread messages from END_USER
+    const hasUnreadUserMessages = thread.messages.some(
+      (msg) => !msg.is_read && msg.sender_kind === "END_USER"
+    );
+
+    // Mark all messages as read if there are unread user messages
+    if (hasUnreadUserMessages) {
+      await handleMarkAllRead(thread.id);
+    }
   };
 
   const getLastMessageTime = (thread: ChatThread) => {
@@ -245,6 +292,10 @@ const MainComponent: FC = () => {
   };
 
   const getUnreadCount = (thread: ChatThread) => {
+    // Only show unread count if it's not the currently selected thread
+    if (selectedThread && selectedThread.id === thread.id) {
+      return 0;
+    }
     return thread.messages.filter(
       (msg) => !msg.is_read && msg.sender_kind === "END_USER"
     ).length;
@@ -386,7 +437,8 @@ const MainComponent: FC = () => {
                   <button
                     key={thread.id}
                     onClick={() => handleThreadSelect(thread)}
-                    className={`w-full p-4 text-left hover:bg-gray-50 transition-colors duration-150 ${
+                    disabled={isMarkingRead}
+                    className={`w-full p-4 text-left hover:bg-gray-50 transition-colors duration-150 disabled:opacity-50 ${
                       isSelected ? "bg-blue-50 border-r-2 border-blue-500" : ""
                     }`}
                   >
@@ -397,7 +449,11 @@ const MainComponent: FC = () => {
                           isSelected ? "bg-blue-500" : "bg-gray-400"
                         }`}
                       >
-                        {getUserInitials(thread.user_email)}
+                        {isMarkingRead && isSelected ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          getUserInitials(thread.user_email)
+                        )}
                       </div>
 
                       {/* Content */}
@@ -576,7 +632,6 @@ const MainComponent: FC = () => {
                               : ""
                           }`}
                         >
-                          {/* Three-dots menu for admin messages */}
                           {/* Three-dots menu for admin messages */}
                           {isAdmin && !isEditing && (
                             <div className="absolute top-1 right-1 md:top-2 md:right-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
