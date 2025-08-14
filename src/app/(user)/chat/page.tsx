@@ -11,6 +11,7 @@ import {
   MoreVertical,
   ArrowLeft,
   Menu,
+  CheckCheck,
 } from "lucide-react";
 import { useChatQueries } from "@/hooks/chat/useChatQueries";
 import {
@@ -45,6 +46,7 @@ const Chat = () => {
   } | null>(null);
   const [showSidebar, setShowSidebar] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [currentMessages, setCurrentMessages] = useState<Message[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Chat hooks
@@ -69,6 +71,7 @@ const Chat = () => {
     selectedThreadId!,
     { enabled: !!selectedThreadId }
   );
+
   const { data: messagesData, isLoading: messagesLoading } = useMessages(
     1,
     50,
@@ -96,12 +99,19 @@ const Chat = () => {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Update local messages when server data changes
+  useEffect(() => {
+    if (messagesData?.results) {
+      setCurrentMessages(messagesData.results);
+    }
+  }, [messagesData?.results]);
+
   // Scroll to bottom on new messages
   useEffect(() => {
-    if (messagesData?.results?.length > 0) {
+    if (currentMessages.length > 0) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messagesData?.results?.length]);
+  }, [currentMessages.length]);
 
   // Set initial thread
   useEffect(() => {
@@ -160,29 +170,71 @@ const Chat = () => {
     return () => document.removeEventListener("click", handleClickOutside);
   }, [showSidebar, isMobile]);
 
-  // Send message
+  // Function to get the last message of current user
+  const getLastUserMessage = () => {
+    const userMessages = currentMessages.filter(
+      (msg) => msg.sender_kind === "END_USER"
+    );
+    return userMessages.length > 0
+      ? userMessages[userMessages.length - 1]
+      : null;
+  };
+
+  // Send message with immediate UI update
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedThreadId) return;
+
     const messageData: CreateMessageRequest = {
       thread: selectedThreadId,
       text: newMessage.trim(),
       is_read: false,
     };
+
+    // Create temporary message for immediate UI update
+    const tempMessage = {
+      id: Date.now(), // temporary ID
+      text: newMessage.trim(),
+      sender_kind: "END_USER",
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      is_read: false,
+      thread: selectedThreadId,
+      sender_email: "user@example.com",
+    };
+
+    // Add to current messages immediately for UI feedback
+    setCurrentMessages((prev) => [...prev, tempMessage]);
+    setNewMessage("");
+
     try {
-      await sendMessageMutation.mutateAsync(messageData);
-      setNewMessage("");
+      const response = await sendMessageMutation.mutateAsync(messageData);
+      console.log("Message sent successfully:", response);
+
+      // Remove temp message and let real data come from server
+      setTimeout(() => {
+        setCurrentMessages((prev) =>
+          prev.filter((msg) => msg.id !== tempMessage.id)
+        );
+      }, 1000);
     } catch (error) {
       console.error("Failed to send message:", error);
+      // Remove temp message on error
+      setCurrentMessages((prev) =>
+        prev.filter((msg) => msg.id !== tempMessage.id)
+      );
+      // Restore message text on error
+      setNewMessage(messageData.text);
     }
   };
 
-  // Thread select
+  // Thread select with messages reset
   const handleThreadSelect = (threadId: number) => {
     if (selectedThreadId !== threadId) {
       setSelectedThreadId(threadId);
       setEditingMessageId(null);
       setShowDropdown(null);
+      setCurrentMessages([]); // Reset messages when switching threads
       markAllReadMutation.mutate(threadId);
     }
   };
@@ -278,9 +330,13 @@ const Chat = () => {
     }
   };
 
-  const currentThreadMessages = messagesData?.results || [];
+  // Use local messages instead of server messages for display
+  const displayMessages = currentMessages || [];
   const canEditMessage = (message: Message) =>
     message.sender_kind === "END_USER";
+
+  // Get last user message for status display
+  const lastUserMessage = getLastUserMessage();
 
   if (threadsError) {
     return (
@@ -298,7 +354,7 @@ const Chat = () => {
   }
 
   return (
-    <div className="main_gradient_bg pt-16  h-screen flex flex-col lg:flex-row overflow-hidden relative">
+    <div className="main_gradient_bg pt-16 h-screen flex flex-col lg:flex-row overflow-hidden relative">
       {/* Mobile Overlay */}
       {isMobile && showSidebar && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" />
@@ -439,9 +495,15 @@ const Chat = () => {
                 <MessageSkeleton key={i} />
               ))}
             </div>
+          ) : displayMessages.length === 0 ? (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-gray-400 text-sm">
+                まだメッセージがありません
+              </p>
+            </div>
           ) : (
             <AnimatePresence>
-              {currentThreadMessages.map((message: Message) => {
+              {displayMessages.map((message: Message, index: number) => {
                 const isAdmin = message.sender_kind === "SUPER_ADMIN";
                 const isSupport = message.sender_kind === "support";
                 const isEndUser = message.sender_kind === "END_USER";
@@ -453,6 +515,10 @@ const Chat = () => {
                   hour: "2-digit",
                   minute: "2-digit",
                 });
+
+                // Check if this is the last user message
+                const isLastUserMessage =
+                  lastUserMessage && message.id === lastUserMessage.id;
 
                 return (
                   <motion.div
@@ -545,14 +611,43 @@ const Chat = () => {
                                 </div>
                               )}
                             </div>
-                            <div className="text-xs text-gray-300 mt-1.5 sm:mt-2">
-                              {timestamp}
-                              {message.updated_at &&
-                                message.updated_at !== message.created_at && (
-                                  <span className="text-gray-400 ml-1">
-                                    (編集済み)
-                                  </span>
-                                )}
+                            <div className="flex justify-between items-center mt-1.5 sm:mt-2">
+                              <div className="text-xs text-gray-300">
+                                {timestamp}
+                                {message.updated_at &&
+                                  message.updated_at !== message.created_at && (
+                                    <span className="text-gray-400 ml-1">
+                                      (編集済み)
+                                    </span>
+                                  )}
+                              </div>
+
+                              {/* Read Status - Only show for END_USER messages and only on the last user message */}
+                              {isEndUser && isLastUserMessage && (
+                                <div className="flex items-center gap-1">
+                                  {message.is_read ? (
+                                    <>
+                                      <CheckCheck
+                                        size={12}
+                                        className="text-blue-400"
+                                      />
+                                      <span className="text-xs text-blue-400">
+                                        既読
+                                      </span>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Check
+                                        size={12}
+                                        className="text-gray-400"
+                                      />
+                                      <span className="text-xs text-gray-400">
+                                        送信済み
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              )}
                             </div>
                           </>
                         )}
@@ -600,7 +695,7 @@ const Chat = () => {
           >
             <button
               onClick={() => {
-                const message = currentThreadMessages.find(
+                const message = displayMessages.find(
                   (m) => m.id === showDropdown.messageId
                 );
                 if (message) handleStartEdit(message);
