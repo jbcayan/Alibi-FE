@@ -53,8 +53,8 @@ const LoginPage = () => {
         await subscriptionApiClient.getSubscriptionStatus();
 
       const hasActiveSubscription =
-        subscriptionStatus?.has_subscription &&
-        subscriptionStatus?.status === "active";
+        subscriptionStatus?.has_active_subscription &&
+        subscriptionStatus?.subscription_status === "current";
 
       return hasActiveSubscription ? "/" : "/subscription-plans";
     } catch (error) {
@@ -215,7 +215,7 @@ const LoginPage = () => {
               ログイン後、プレミアムプランの選択が必要です
             </p>
             <p className="text-xs text-gray-400">
-              安全なStripe決済システムを使用しています
+              安全なUnivaPay決済システムを使用しています
             </p>
           </div>
         </div>

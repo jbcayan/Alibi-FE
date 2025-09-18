@@ -1,5 +1,12 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+
+// Extend window type for UnivapayCheckout
+declare global {
+  interface Window {
+    UnivapayCheckout?: any;
+  }
+}
 import Menu from "@/components/home/Menu";
 import { userApiClient } from "@/infrastructure/user/userAPIClient";
 import {
@@ -40,6 +47,83 @@ const AlibiSouvenir = () => {
   const [requestError, setRequestError] = useState<string | null>(null);
   const [requestPage, setRequestPage] = useState(1);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  // Widget config and script loading state
+  const [widgetConfig, setWidgetConfig] = useState<any>(null);
+  const [widgetLoaded, setWidgetLoaded] = useState(false);
+  const widgetScriptRef = useRef<HTMLScriptElement | null>(null);
+
+  // Robust UnivaPay script loader (from subscription flow)
+  const loadUnivapayScript = (src: string): Promise<void> => {
+    console.log('[Souvenir] loadUnivapayScript called with src:', src);
+    return new Promise((resolve, reject) => {
+      if (typeof window === "undefined") {
+        console.log('[Souvenir] Window undefined, resolving');
+        resolve();
+        return;
+      }
+      // Check if already loaded
+      const possibleGlobals = ["Univapay", "UnivapayCheckout", "UnivaPay", "univapay", "GopayCheckout"];
+      for (const globalName of possibleGlobals) {
+        if ((window as any)[globalName]) {
+          console.log('[Souvenir] Found existing global:', globalName);
+          (window as any).Univapay = (window as any)[globalName];
+          resolve();
+          return;
+        }
+      }
+      console.log('[Souvenir] No existing global found, checking for existing script');
+      // Check if script exists
+      const existingScript = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement;
+      if (existingScript) {
+        console.log('[Souvenir] Found existing script, checking if loaded');
+        if (existingScript.dataset.loaded === "true") {
+          console.log('[Souvenir] Existing script already loaded');
+          resolve();
+          return;
+        }
+        console.log('[Souvenir] Waiting for existing script to load');
+        existingScript.addEventListener("load", () => {
+          existingScript.dataset.loaded = "true";
+          console.log('[Souvenir] Existing script loaded');
+          resolve();
+        });
+        existingScript.addEventListener("error", (e) => {
+          console.error('[Souvenir] Existing script error:', e);
+          reject(e);
+        });
+        return;
+      }
+      console.log('[Souvenir] Creating new script element');
+      // Create and load new script
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = false;
+      script.defer = false;
+      script.dataset.loaded = "false";
+      script.onload = () => {
+        console.log('[Souvenir] Script loaded, checking for global');
+        script.dataset.loaded = "true";
+        setTimeout(() => {
+          for (const globalName of possibleGlobals) {
+            if ((window as any)[globalName]) {
+              console.log('[Souvenir] Found global after load:', globalName);
+              (window as any).Univapay = (window as any)[globalName];
+              resolve();
+              return;
+            }
+          }
+          console.error('[Souvenir] Global not found after script load, available globals:', Object.keys(window).filter(key => key.toLowerCase().includes('univa') || key.toLowerCase().includes('checkout')));
+          reject(new Error("UnivaPay global not found after script load"));
+        }, 200);
+      };
+      script.onerror = (e) => {
+        console.error('[Souvenir] Script load error:', e);
+        reject(new Error("Failed to load UnivaPay script"));
+      };
+      console.log('[Souvenir] Appending script to head');
+      document.head.appendChild(script);
+    });
+  };
   const REQUESTS_PER_PAGE = 6;
   const totalPages = Math.ceil(souvenirRequests.length / REQUESTS_PER_PAGE);
   const paginatedRequests = souvenirRequests.slice(
@@ -66,8 +150,8 @@ const AlibiSouvenir = () => {
       setSouvenirRequests(
         Array.isArray(data)
           ? data
-          : Array.isArray(data.results)
-          ? data.results
+          : data && Array.isArray((data as any).results)
+          ? (data as any).results
           : []
       );
     } catch (err: any) {
@@ -84,149 +168,294 @@ const AlibiSouvenir = () => {
     return `GL-TTSC-${timestamp}${random}`;
   };
 
-  // Create payment product and redirect to Stripe
-  const createPaymentProduct = async (orderData: any) => {
-    try {
+  // Make debug function available globally for console testing
+  useEffect(() => {
+    // Add a test function for the widget config endpoint
+    (window as any).testWidgetConfig = async () => {
       const token = localStorage.getItem("accessToken");
-      const orderId = generateOrderId();
+      const baseUrl = "https://15.206.185.80";
+      console.log('Testing widget config endpoint...');
+      console.log('URL:', `${baseUrl}/payment/widget-config/`);
+      console.log('Token available:', !!token);
 
-      const paymentPayload = {
-        order_id: orderId,
-        amount: orderData.amount.toString(),
-        quantity: Number(orderData.quantity),
-        success_url: `${window.location.origin}/alibi-souvenir`,
-        cancel_url: `${window.location.origin}/alibi-souvenir`,
-      };
-
-      const response = await fetch(`${baseUrl}/payment/product/create/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-        body: JSON.stringify(paymentPayload),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || "Payment creation failed");
-      }
-
-      const paymentData = await response.json();
-
-      if (paymentData.checkout_url) {
-        // Store order data for later verification
-        const orderInfo = {
-          ...orderData,
-          order_id: orderId,
-          gallery_uid: orderModal?.uid,
-          timestamp: Date.now(),
-        };
-        localStorage.setItem("pending_order", JSON.stringify(orderInfo));
-
-        // Redirect to Stripe checkout
-        window.location.href = paymentData.checkout_url;
-      } else {
-        throw new Error("No checkout URL received");
-      }
-    } catch (error: any) {
-      console.error("Payment creation error:", error);
-      throw new Error(error.message || "Payment processing failed");
-    }
-  };
-
-  // Verify payment and create souvenir request
-  const verifyPaymentAndCreateOrder = async (sessionId: string) => {
-    try {
-      const token = localStorage.getItem("accessToken");
-
-      // Verify payment
-      const verifyResponse = await fetch(
-        `${baseUrl}/payment/product/verify/?session_id=${sessionId}`,
-        {
-          method: "GET",
+      try {
+        const response = await fetch(`${baseUrl}/payment/widget-config/`, {
           headers: {
+            "Content-Type": "application/json",
             Accept: "application/json",
             Authorization: token ? `Bearer ${token}` : "",
           },
+        });
+        console.log('Response status:', response.status);
+        console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Success! Widget config:', data);
+          console.log('Note: UnivaPay widget expects amount in sen (JPY * 100)');
+          console.log('Note: Charge endpoint should be /payment/univapay/charge/');
+        } else {
+          const errorText = await response.text();
+          console.error('Error response:', errorText);
         }
-      );
-
-      if (!verifyResponse.ok) {
-        throw new Error("Payment verification failed");
+      } catch (error) {
+        console.error('Network error:', error);
       }
+    };
 
-      const verificationData = await verifyResponse.json();
+    // Add a test function for the charge endpoint
+    (window as any).testChargeEndpoint = async () => {
+      const token = localStorage.getItem("accessToken");
+      const baseUrl = "https://15.206.185.80";
+      console.log('Testing charge endpoint...');
 
-      // Get stored order data
-      const pendingOrder = localStorage.getItem("pending_order");
-      if (!pendingOrder) {
-        throw new Error("No pending order found");
-      }
-
-      const orderData = JSON.parse(pendingOrder);
-
-      // Create souvenir request
-      const souvenirPayload = {
-        media_files: [{ gallery_uid: orderData.gallery_uid }],
-        quantity: Number(orderData.quantity),
-        description: orderData.description,
-        special_note: orderData.special_note,
-        desire_delivery_date: orderData.desire_delivery_date,
-        order_id: orderData.order_id,
-        amount: orderData.amount,
-        payment_verified: true,
+      const testPayload = {
+        transaction_token_id: "test_token_123",
+        token_id: "test_token_123",
+        token: "test_token_123",
+        amount: 100,
+        currency: "JPY",
+        metadata: {
+          order_id: "TEST-ORDER-123",
+          gallery_uid: "test-gallery-uid",
+          description: "Test charge"
+        },
+        three_ds: { mode: "normal" }
       };
 
-      const souvenirResponse = await fetch(
-        `${baseUrl}/gallery/souvenir-requests`,
-        {
+      try {
+        const response = await fetch(`${baseUrl}/payment/univapay/charge/`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
             Accept: "application/json",
             Authorization: token ? `Bearer ${token}` : "",
           },
-          body: JSON.stringify(souvenirPayload),
-        }
-      );
+          body: JSON.stringify(testPayload)
+        });
 
-      if (!souvenirResponse.ok) {
-        const err = await souvenirResponse.json();
+        console.log('Charge test response status:', response.status);
+        console.log('Charge test response headers:', Object.fromEntries(response.headers.entries()));
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Charge test success:', data);
+        } else {
+          try {
+            const errorData = await response.json();
+            console.error('Charge test error (JSON):', errorData);
+          } catch (e) {
+            const errorText = await response.text();
+            console.error('Charge test error (Text):', errorText);
+          }
+        }
+      } catch (error) {
+        console.error('Charge test network error:', error);
+      }
+    };
+  }, []);
+
+  // Load UnivaPay widget config and script (robust, like subscription)
+  useEffect(() => {
+    console.log('[Souvenir] useEffect running for widget initialization');
+    async function loadWidgetConfigAndScript() {
+      console.log('[Souvenir] loadWidgetConfigAndScript function called');
+      try {
+        console.log('[Souvenir] Starting widget config fetch...');
+        console.log('[Souvenir] Base URL:', baseUrl);
+        console.log('[Souvenir] Full URL:', `${baseUrl}/payment/widget-config/`);
+        console.log('[Souvenir] Making fetch request...');
+        const token = localStorage.getItem("accessToken");
+        console.log('[Souvenir] Access token available:', !!token);
+        console.log('[Souvenir] Access token value:', token ? token.substring(0, 20) + '...' : 'null');
+        console.log('[Souvenir] Access token length:', token ? token.length : 0);
+        const res = await fetch(`${baseUrl}/payment/widget-config/`, {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        });
+        console.log('[Souvenir] Widget config response status:', res.status);
+        if (!res.ok) {
+          console.error('[Souvenir] Failed to fetch widget config:', res.status, res.statusText);
+          throw new Error("Failed to load widget config");
+        }
+        const config = await res.json();
+        console.log('[Souvenir] Widget config received:', config);
+        setWidgetConfig(config);
+        console.log('[Souvenir] Loading script from:', config.widget_url);
+        await loadUnivapayScript(config.widget_url);
+        console.log('[Souvenir] Widget loaded successfully');
+        setWidgetLoaded(true);
+      } catch (err: any) {
+        console.error('[Souvenir] Widget loading failed:', err.message);
+        setWidgetLoaded(false);
+        setWidgetConfig(null);
+      }
+    }
+    loadWidgetConfigAndScript();
+    // eslint-disable-next-line
+  }, []);
+
+  // Open UnivaPay widget and handle payment (robust, like subscription)
+  const openUnivapayWidget = async (orderData: any) => {
+    console.log('[Souvenir] Attempting to open widget...');
+    console.log('[Souvenir] Widget config:', widgetConfig);
+    console.log('[Souvenir] Widget loaded:', widgetLoaded);
+    if (!widgetConfig || !widgetLoaded) {
+      console.error('[Souvenir] Payment system not ready - config:', !!widgetConfig, 'loaded:', widgetLoaded);
+      toast.error("Payment system not ready. Please try again later.");
+      return;
+    }
+    setSubmitting(true);
+    try {
+      // Wait for widget global
+      const UnivapayGlobal = (window as any).Univapay || (window as any).UnivapayCheckout;
+      console.log('[Souvenir] UnivapayGlobal available:', !!UnivapayGlobal);
+      if (!UnivapayGlobal) throw new Error("UnivaPay widget not loaded");
+      const orderId = generateOrderId();
+      console.log('[Souvenir] Generated order ID:', orderId);
+      console.log('[Souvenir] Raw orderData.amount:', orderData.amount);
+      console.log('[Souvenir] Number(orderData.amount):', Number(orderData.amount));
+      console.log('[Souvenir] Type of orderData.amount:', typeof orderData.amount);
+
+      // UnivaPay expects amount in sen (1 JPY = 100 sen)
+      const amountInSen = Math.round(Number(orderData.amount) * 100);
+      console.log('[Souvenir] Amount in sen for UnivaPay:', amountInSen);
+
+      const tokenId: string = await new Promise((resolve, reject) => {
+        let widget;
+        try {
+          widget = UnivapayGlobal.create({
+            appId: widgetConfig.app_token,
+            storeId: widgetConfig.store_id,
+            amount: amountInSen, // Use amount in sen
+            currency: "JPY",
+            checkout: "token",
+            cvvAuthorize: true,
+            metadata: {
+              kind: "one_time",
+              order_id: orderId,
+              gallery_uid: orderModal?.uid,
+              description: orderData.description,
+            },
+            onSuccess: (result: any) => {
+              const tokenId = result?.id || result?.tokenId || result?.transactionTokenId || result?.transaction_token_id;
+              if (!tokenId) {
+                reject(new Error("No payment token received"));
+                return;
+              }
+              resolve(tokenId);
+            },
+            onError: (err: any) => {
+              reject(new Error(err?.message || "Widget error"));
+            },
+            onClose: () => {
+              reject(new Error("Widget closed by user"));
+            },
+          });
+          widget.open();
+        } catch (err) {
+          reject(err);
+        }
+        setTimeout(() => reject(new Error("Timed out waiting for payment token")), 120000);
+      });
+      // Call backend to create charge
+      const token = localStorage.getItem("accessToken");
+      const payload = {
+        transaction_token_id: tokenId, // Primary: what backend expects
+        token_id: tokenId, // Fallback: alternative name
+        token: tokenId, // Another fallback
+        amount: amountInSen, // Send amount in sen (integer) to backend
+        currency: "JPY",
+        metadata: {
+          order_id: orderId,
+          gallery_uid: orderModal?.uid,
+          description: orderData.description,
+        },
+        three_ds: { mode: "normal" },
+      };
+
+      console.log('[Souvenir] Sending charge request to:', `${baseUrl}/payment/univapay/charge/`);
+      console.log('[Souvenir] Charge payload:', JSON.stringify({
+        ...payload,
+        transaction_token_id: "***",
+        token_id: "***",
+        token: "***"
+      }, null, 2));
+      const res = await fetch(`${baseUrl}/payment/univapay/charge/`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify(payload),
+      });
+      if (!res.ok) {
+        let errorDetails;
+        try {
+          const err = await res.json();
+          errorDetails = err;
+          console.error('[Souvenir] Charge request failed - Backend Error Details:', {
+            status: res.status,
+            statusText: res.statusText,
+            backendError: err,
+            fullPayload: payload,
+            url: `${baseUrl}/payment/univapay/charge/`
+          });
+          console.error('[Souvenir] Backend error message:', err.detail || err.message || err.error || JSON.stringify(err));
+        } catch (parseError) {
+          const errorText = await res.text();
+          console.error('[Souvenir] Charge request failed - Raw Error Response:', {
+            status: res.status,
+            statusText: res.statusText,
+            rawErrorText: errorText,
+            fullPayload: payload,
+            url: `${baseUrl}/payment/univapay/charge/`,
+            parseError: parseError.message
+          });
+        }
+        throw new Error("Payment failed - check console for backend error details");
+      }
+      // On success, create souvenir order
+      const chargeData = await res.json();
+      const souvenirPayload = {
+        media_files: [{ gallery_uid: orderModal?.uid }],
+        quantity: Number(orderData.quantity),
+        description: orderData.description,
+        special_note: orderData.special_note,
+        desire_delivery_date: orderData.desire_delivery_date,
+        order_id: orderId,
+        amount: Number(orderData.amount), // Use original JPY amount for souvenir order
+        payment_verified: true,
+      };
+      const souvenirRes = await fetch(`${baseUrl}/gallery/souvenir-requests`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: token ? `Bearer ${token}` : "",
+        },
+        body: JSON.stringify(souvenirPayload),
+      });
+      if (!souvenirRes.ok) {
+        const err = await souvenirRes.json();
         throw new Error(err.detail || "Order creation failed after payment");
       }
-
-      // Clear pending order
-      localStorage.removeItem("pending_order");
-
       toast.success("Payment successful! Your order has been placed.");
-      return true;
-    } catch (error: any) {
-      console.error("Payment verification error:", error);
-      toast.error(error.message || "Payment verification failed");
-      return false;
+      setOrderModal(null);
+      fetchSouvenirRequests();
+    } catch (err: any) {
+      toast.error(err.message || "Payment failed");
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  // Check for payment callback on component mount
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get("session_id");
 
-    if (sessionId) {
-      setPaymentProcessing(true);
-      verifyPaymentAndCreateOrder(sessionId).finally(() => {
-        setPaymentProcessing(false);
-        // Clean up URL
-        window.history.replaceState(
-          {},
-          document.title,
-          window.location.pathname
-        );
-      });
-    }
-  }, []);
+  // No longer need to check for session_id in URL; widget-based flow only
 
   useEffect(() => {
     fetchGallery();
@@ -255,17 +484,7 @@ const AlibiSouvenir = () => {
 
   const onOrderSubmit = async (data: any) => {
     if (!orderModal) return;
-    setSubmitting(true);
-
-    try {
-      await createPaymentProduct(data);
-    } catch (err: any) {
-      toast.error(
-        err.message || "Payment processing failed. Please try again."
-      );
-    } finally {
-      setSubmitting(false);
-    }
+    await openUnivapayWidget(data);
   };
 
   // Show processing overlay if payment is being processed

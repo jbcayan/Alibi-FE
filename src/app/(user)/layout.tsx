@@ -12,8 +12,6 @@ interface Props {
 
 const UserDashboardLayout = ({ children }: Props) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { loading, hasActiveSubscription } = useSubscriptionGuard(true);
-
   const pathname = usePathname();
 
   // Define routes where sidebar and menu should be hidden
@@ -23,7 +21,20 @@ const UserDashboardLayout = ({ children }: Props) => {
     "/user/verify-otp",
     "/reset-password",
   ];
-  const shouldHideUI = hideUIRoutes.includes(pathname);
+
+  // Define routes where subscription guard should not apply
+  const excludeSubscriptionGuardRoutes = [
+    "/login",
+    "/register",
+    "/user/verify-otp",
+    "/reset-password",
+    "/subscription-success",
+  ];
+
+  const shouldHideUI = pathname ? hideUIRoutes.includes(pathname) : false;
+  const shouldExcludeSubscriptionGuard = pathname ? excludeSubscriptionGuardRoutes.includes(pathname) : false;
+
+  const { loading, hasActiveSubscription } = useSubscriptionGuard(!shouldExcludeSubscriptionGuard);
 
   const handleMenuToggle = () => setSidebarOpen(!sidebarOpen);
   const handleSidebarClose = () => setSidebarOpen(false);

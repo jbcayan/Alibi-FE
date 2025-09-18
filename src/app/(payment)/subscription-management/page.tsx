@@ -218,7 +218,7 @@ const SubscriptionManagePage = () => {
               <label className="text-sm text-gray-400 block mb-1">
                 決済方法
               </label>
-              <p>Stripe経由でのクレジットカード決済</p>
+              <p>UnivaPay経由でのクレジットカード決済</p>
             </div>
 
             <div>

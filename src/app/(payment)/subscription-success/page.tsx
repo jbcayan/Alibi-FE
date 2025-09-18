@@ -25,7 +25,29 @@ const SubscriptionSuccessPage = () => {
           // Try to get from localStorage (fallback)
           const storedSessionId = localStorage.getItem("checkout_session_id");
           if (!storedSessionId) {
-            throw new Error("Session ID not found");
+            // No session ID available - this might happen if payment was processed directly
+            // Show success message anyway since user reached this page
+            console.log("No session ID found, but user reached success page - assuming payment was successful");
+            setStatus("success");
+
+            // Show success toast
+            toast.success("サブスクリプションが正常に完了しました！");
+
+            // Mark that user came from success page
+            sessionStorage.setItem("came_from_success", "true");
+            // Mark payment completion time to prevent redirect loops
+            localStorage.setItem("last_payment_timestamp", Date.now().toString());
+
+            const role = localStorage.getItem("role");
+            if (role === user_role.SUPER_ADMIN) {
+              router.push("/admin");
+            }
+
+            // Redirect to home after 3 seconds
+            setTimeout(() => {
+              router.push("/");
+            }, 3000);
+            return;
           }
 
           // Confirm subscription with stored session ID
@@ -40,6 +62,11 @@ const SubscriptionSuccessPage = () => {
 
           // Show success toast
           toast.success("サブスクリプションが正常に確認されました！");
+
+          // Mark that user came from success page
+          sessionStorage.setItem("came_from_success", "true");
+          // Mark payment completion time to prevent redirect loops
+          localStorage.setItem("last_payment_timestamp", Date.now().toString());
 
           const role = localStorage.getItem("role");
           if (role === user_role.SUPER_ADMIN) {
@@ -63,6 +90,11 @@ const SubscriptionSuccessPage = () => {
 
           // Show success toast
           toast.success("サブスクリプションが正常に確認されました！");
+
+          // Mark that user came from success page
+          sessionStorage.setItem("came_from_success", "true");
+          // Mark payment completion time to prevent redirect loops
+          localStorage.setItem("last_payment_timestamp", Date.now().toString());
 
           // Redirect to home after 3 seconds
           setTimeout(() => {

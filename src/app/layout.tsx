@@ -25,6 +25,7 @@ export default function UserDashboardLayout({
 }>) {
   return (
     <html lang="en">
+      {/* Head is now managed by _document.tsx for UnivaPay widget */}
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

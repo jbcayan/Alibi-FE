@@ -29,7 +29,17 @@ const UserDashboard = () => {
     }
 
     if (!loading && !hasActiveSubscription) {
-      router.replace("/login");
+      // Check if user recently completed payment (within last 30 seconds)
+      const lastPaymentTime = localStorage.getItem("last_payment_timestamp");
+      const now = Date.now();
+      const recentlyPaid = lastPaymentTime && (now - parseInt(lastPaymentTime)) < 30000; // 30 seconds
+
+      if (recentlyPaid) {
+        console.log("🔄 User recently completed payment, skipping redirect to allow status update");
+        return;
+      }
+
+      router.replace("/subscription-plans");
     }
   }, [loading, hasActiveSubscription, router]);
 
