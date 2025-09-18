@@ -59,6 +59,8 @@ export interface GalleryItem {
   description: string;
   file_type: string; // "image", "video", etc.
   file: string;
+  price?: number; // Price in JPY
+  price_jpy?: number; // Alternative price field
 }
 
 export interface GalleryResponse {

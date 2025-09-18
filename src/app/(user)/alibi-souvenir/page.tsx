@@ -253,6 +253,37 @@ const AlibiSouvenir = () => {
         console.error('Charge test network error:', error);
       }
     };
+
+    // Add a test function to check gallery API response
+    (window as any).testGalleryAPI = async () => {
+      const token = localStorage.getItem("accessToken");
+      const baseUrl = "https://15.206.185.80";
+      console.log('Testing gallery API to check price fields...');
+
+      try {
+        const response = await fetch(`${baseUrl}/gallery`, {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: token ? `Bearer ${token}` : "",
+          },
+        });
+
+        console.log('Gallery API response status:', response.status);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Gallery API success - full response:', data);
+          console.log('First few gallery items:', data.results?.slice(0, 3));
+          console.log('Checking for price fields in first item:', data.results?.[0]);
+        } else {
+          const errorText = await response.text();
+          console.error('Gallery API error:', errorText);
+        }
+      } catch (error) {
+        console.error('Gallery API network error:', error);
+      }
+    };
   }, []);
 
   // Load UnivaPay widget config and script (robust, like subscription)
@@ -471,6 +502,7 @@ const AlibiSouvenir = () => {
     register,
     handleSubmit,
     reset,
+    setValue,
     formState: { errors },
   } = useForm({
     defaultValues: {
@@ -487,12 +519,20 @@ const AlibiSouvenir = () => {
     await openUnivapayWidget(data);
   };
 
+  // Pre-fill amount when order modal opens
+  useEffect(() => {
+    if (orderModal && (orderModal.price || orderModal.price_jpy)) {
+      const itemPrice = orderModal.price || orderModal.price_jpy;
+      setValue("amount", itemPrice?.toString() || "");
+    }
+  }, [orderModal, setValue]);
+
   // Show processing overlay if payment is being processed
   if (paymentProcessing) {
     return (
-      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md">
-        <div className="bg-white/10 border border-white/20 rounded-xl p-8 backdrop-blur-2xl text-white text-center">
-          <div className="w-16 h-16 border-4 border-white/20 border-t-white animate-spin rounded-full mx-auto mb-4"></div>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+        <div className="bg-white/10 border border-white/20 rounded-xl p-8 backdrop-blur-2xl text-white text-center max-w-md">
+          <div className="w-16 h-16 border-4 border-blue-400/20 border-t-blue-400 animate-spin rounded-full mx-auto mb-4"></div>
           <h3 className="text-xl font-semibold mb-2">Processing Payment...</h3>
           <p className="text-white/80">
             Please wait while we verify your payment.
@@ -537,25 +577,58 @@ const AlibiSouvenir = () => {
             {loading ? (
               <Spinner />
             ) : (
-              <div className="grid sm:grid-cols-2 pb-10 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                {galleryItems.map((item) => (
+              <div className="grid sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {galleryItems.map((item, index) => (
                   <div
                     key={item.uid}
-                    className="rounded-2xl bg-white/10 shadow-2xl  border border-white/20 hover:border-blue-400 transition-all p-4 flex flex-col gap-3 glass-card backdrop-blur-xl hover:shadow-blue-200/40 group relative cursor-pointer"
+                    className="group relative cursor-pointer transform transition-all duration-300 hover:scale-105 hover:-translate-y-1"
                     onClick={() => setOrderModal(item)}
+                    style={{ animationDelay: `${index * 0.1}s` }}
                   >
-                    <div className="aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-blue-100/20 to-white/10 mb-3 group-hover:scale-105 transition-transform duration-200">
-                      <img
-                        src={item.file}
-                        alt={item.title}
-                        className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-110"
-                      />
-                    </div>
-                    <h3 className="text-white font-semibold mb-1 text-base truncate">
-                      {item.title}
-                    </h3>
-                    <div className="text-xs text-gray-400 line-clamp-2">
-                      {item.description}
+                    {/* Card Container */}
+                    <div className="relative rounded-2xl bg-white/10 shadow-xl border border-white/20 hover:border-blue-400 transition-all duration-300 backdrop-blur-xl overflow-hidden group-hover:shadow-blue-200/40">
+                      {/* Image Container */}
+                      <div className="relative aspect-square overflow-hidden">
+                        {/* Main Image */}
+                        <img
+                          src={item.file}
+                          alt={item.title}
+                          className="w-full h-full object-cover transition-all duration-300 group-hover:scale-110"
+                        />
+                        {/* Overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      </div>
+
+                      {/* Content Section */}
+                      <div className="p-3 relative">
+                        {/* Title */}
+                        <h3 className="text-white font-semibold text-sm mb-2 leading-tight truncate">
+                          {item.title}
+                        </h3>
+
+                        {/* Price Display */}
+                        {(item.price || item.price_jpy) && (
+                          <div className="mb-2">
+                            <div className="inline-flex items-center gap-1 bg-blue-500/20 border border-blue-400/30 rounded-lg px-2 py-1 backdrop-blur-sm">
+                              <span className="text-blue-400 font-bold text-sm">
+                                ¥{(item.price || item.price_jpy)?.toLocaleString()}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Action Indicator */}
+                        <div className="flex items-center justify-between">
+                          <div className="text-xs text-blue-400/70 font-medium">
+                            注文
+                          </div>
+                          <div className="w-6 h-6 rounded-full bg-blue-500/20 flex items-center justify-center group-hover:bg-blue-400/30 transition-all duration-300">
+                            <svg className="w-3 h-3 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -565,154 +638,167 @@ const AlibiSouvenir = () => {
         )}
 
         {orderModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-md p-4">
-            <div className="relative max-w-xl w-full max-h-[90vh] bg-gradient-to-br from-white/10 to-blue-100/10 border border-white/20 shadow-2xl rounded-xl backdrop-blur-2xl text-white overflow-hidden flex flex-col">
-              {/* Header - Fixed at top */}
-              <div className="flex-shrink-0 px-6 pt-6 pb-4 border-b border-white/10">
-                <h3 className="text-xl font-semibold text-center pr-8">
-                  {orderModal.title}
-                </h3>
-                {/* Close Button */}
-                <button
-                  className="absolute top-4 right-4 text-white/80 hover:text-white w-9 h-9 flex items-center justify-center text-4xl cursor-pointer transition-all"
-                  onClick={() => setOrderModal(null)}
-                >
-                  <X size={30} className="hover:text-red-500" />
-                </button>
-              </div>
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+            <div className="glass-black max-w-3xl w-full overflow-hidden relative rounded-2xl">
+              {/* Close Button */}
+              <button
+                className="absolute top-4 right-4 text-white/80 hover:text-white w-9 h-9 flex items-center justify-center text-4xl cursor-pointer transition-all z-10"
+                onClick={() => setOrderModal(null)}
+              >
+                <X size={30} className="hover:text-red-500" />
+              </button>
 
-              {/* Scrollable Content */}
-              <div className="flex-1 overflow-y-auto px-6 pb-6">
-                {/* Image Preview */}
-                <div className="flex justify-center mb-6">
-                  <div className="w-full h-52 sm:h-60 md:h-64 rounded-2xl overflow-hidden border border-white/20 shadow-lg bg-white/10 backdrop-blur-md">
+              {/* Two Section Layout */}
+              <div className="flex flex-col md:flex-row">
+                {/* Image Section */}
+                <div className="md:w-1/2 p-6 flex items-center justify-center bg-gradient-to-br from-blue-100/20 to-white/10 backdrop-blur-md">
+                  <div className="w-full">
                     <img
                       src={orderModal.file}
                       alt={orderModal.title}
-                      className="w-full h-full object-cover"
+                      className="w-full h-auto object-cover rounded-xl shadow-lg border border-white/10"
                     />
                   </div>
                 </div>
 
-                {/* Form */}
-                <form
-                  className="w-full flex flex-col gap-4"
-                  onSubmit={handleSubmit(onOrderSubmit)}
-                >
-                  {/* Quantity */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-white/80">
-                      Quantity
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      {...register("quantity", { required: true, min: 1 })}
-                      className="w-full p-2 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
-                      placeholder="Enter quantity"
-                    />
-                    {errors.quantity && (
-                      <span className="text-xs text-red-400">
-                        Quantity must be at least 1.
-                      </span>
-                    )}
-                  </div>
+                {/* Form Section */}
+                <div className="md:w-1/2 p-6 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-md">
+                  <div className="h-full flex flex-col">
+                    {/* Header */}
+                    <div className="text-center mb-6">
+                      <h3 className="text-2xl text-white font-semibold mb-2">
+                        {orderModal.title}
+                      </h3>
+                    </div>
 
-                  {/* Amount */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-white/80 flex items-center gap-2">
-                      <CreditCard className="w-4 h-4" />
-                      Amount (¥)
-                    </label>
-                    <input
-                      type="number"
-                      min={1}
-                      step="0.01"
-                      {...register("amount", {
-                        required: "Amount is required",
-                        min: {
-                          value: 1,
-                          message: "Amount must be at least ¥1",
-                        },
-                        valueAsNumber: true,
-                      })}
-                      className="w-full p-2 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
-                      placeholder="Enter amount in yen"
-                    />
-                    {errors.amount && (
-                      <span className="text-xs text-red-400">
-                        {errors.amount.message}
-                      </span>
-                    )}
-                  </div>
+                    {/* Description */}
+                    <div className="mb-6">
+                      <p className="text-gray-300 text-sm leading-relaxed">
+                        {orderModal.description}
+                      </p>
+                    </div>
 
-                  {/* Description */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-white/80">
-                      Description
-                    </label>
-                    <textarea
-                      {...register("description", { required: true })}
-                      className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none resize-none"
-                      rows={3}
-                      placeholder="Provide order details..."
-                    />
-                    {errors.description && (
-                      <span className="text-xs text-red-400">
-                        Description is required.
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Special Note */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-white/80">
-                      Special Note
-                    </label>
-                    <textarea
-                      {...register("special_note")}
-                      className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none resize-none"
-                      rows={2}
-                      placeholder="Optional notes..."
-                    />
-                  </div>
-
-                  {/* Delivery Date */}
-                  <div>
-                    <label className="block text-sm font-medium mb-1 text-white/80">
-                      Desired Delivery Date
-                    </label>
-                    <input
-                      type="date"
-                      {...register("desire_delivery_date", { required: true })}
-                      className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none"
-                    />
-                    {errors.desire_delivery_date && (
-                      <span className="text-xs text-red-400">
-                        Delivery date is required.
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Submit Button - Fixed at bottom */}
-                  <div className="pt-4 border-t border-white/10 mt-2 -mx-6 px-6 bg-gradient-to-t from-white/5 to-transparent">
-                    <Button
-                      type="submit"
-                      variant="glassSec"
-                      size="md"
-                      className="rounded-lg shadow-md border border-white/20 w-full"
-                      loading={submitting}
-                      disabled={submitting}
+                    {/* Form */}
+                    <form
+                      className="flex-1 flex flex-col gap-4"
+                      onSubmit={handleSubmit(onOrderSubmit)}
                     >
-                      <div className="flex items-center justify-center gap-2">
-                        <CreditCard className="w-6 h-6" />
-                        <span>
-                          {submitting ? "Processing..." : "Proceed to Payment"}
-                        </span>
+                      {/* Quantity */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-white/80">
+                          Quantity
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          {...register("quantity", { required: true, min: 1 })}
+                          className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                          placeholder="Enter quantity"
+                        />
+                        {errors.quantity && (
+                          <span className="text-xs text-red-400 mt-1 block">
+                            Quantity must be at least 1.
+                          </span>
+                        )}
                       </div>
-                    </Button>
+
+                      {/* Amount */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-white/80 flex items-center gap-2">
+                          <CreditCard className="w-4 h-4" />
+                          Amount (¥)
+                        </label>
+                        <input
+                          type="number"
+                          min={1}
+                          step="0.01"
+                          {...register("amount", {
+                            required: "Amount is required",
+                            min: {
+                              value: 1,
+                              message: "Amount must be at least ¥1",
+                            },
+                            valueAsNumber: true,
+                          })}
+                          className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                          placeholder="Enter amount in yen"
+                        />
+                        {errors.amount && (
+                          <span className="text-xs text-red-400 mt-1 block">
+                            {errors.amount.message}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-white/80">
+                          Description
+                        </label>
+                        <textarea
+                          {...register("description", { required: true })}
+                          className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 resize-none"
+                          rows={2}
+                          placeholder="Provide order details..."
+                        />
+                        {errors.description && (
+                          <span className="text-xs text-red-400 mt-1 block">
+                            Description is required.
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Special Note */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-white/80">
+                          Special Note (Optional)
+                        </label>
+                        <textarea
+                          {...register("special_note")}
+                          className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 resize-none"
+                          rows={2}
+                          placeholder="Optional notes..."
+                        />
+                      </div>
+
+                      {/* Delivery Date */}
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-white/80">
+                          Desired Delivery Date
+                        </label>
+                        <input
+                          type="date"
+                          {...register("desire_delivery_date", { required: true })}
+                          className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                        />
+                        {errors.desire_delivery_date && (
+                          <span className="text-xs text-red-400 mt-1 block">
+                            Delivery date is required.
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Submit Button */}
+                      <div className="mt-auto pt-4">
+                        <Button
+                          type="submit"
+                          variant="glassSec"
+                          size="md"
+                          className="rounded-lg border border-white/20 w-full hover:bg-blue-400/20 transition-all"
+                          loading={submitting}
+                          disabled={submitting}
+                        >
+                          <div className="flex items-center justify-center gap-2">
+                            <CreditCard className="w-5 h-5" />
+                            <span>
+                              {submitting ? "Processing..." : "Proceed to Payment"}
+                            </span>
+                          </div>
+                        </Button>
+                      </div>
+                    </form>
                   </div>
-                </form>
+                </div>
               </div>
             </div>
           </div>
