@@ -173,7 +173,7 @@ const AlibiSouvenir = () => {
     // Add a test function for the widget config endpoint
     (window as any).testWidgetConfig = async () => {
       const token = localStorage.getItem("accessToken");
-      const baseUrl = "https://15.206.185.80";
+      const baseUrl = "https://prod-be.examplesite.jp";
       console.log('Testing widget config endpoint...');
       console.log('URL:', `${baseUrl}/payment/widget-config/`);
       console.log('Token available:', !!token);
@@ -206,7 +206,7 @@ const AlibiSouvenir = () => {
     // Add a test function for the charge endpoint
     (window as any).testChargeEndpoint = async () => {
       const token = localStorage.getItem("accessToken");
-      const baseUrl = "https://15.206.185.80";
+      const baseUrl = "https://prod-be.examplesite.jp";
       console.log('Testing charge endpoint...');
 
       const testPayload = {
@@ -257,7 +257,7 @@ const AlibiSouvenir = () => {
     // Add a test function to check gallery API response
     (window as any).testGalleryAPI = async () => {
       const token = localStorage.getItem("accessToken");
-      const baseUrl = "https://15.206.185.80";
+      const baseUrl = "https://prod-be.examplesite.jp";
       console.log('Testing gallery API to check price fields...');
 
       try {

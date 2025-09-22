@@ -148,7 +148,7 @@ const SubscriptionPlansPage = () => {
     setSubscribing(plan.uid);
     try {
       console.log('[UnivaPay] Fetching widget config...');
-      const widgetConfigRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "https://15.206.185.80"}/payment/widget-config/`, {
+      const widgetConfigRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "https://prod-be.examplesite.jp"}/payment/widget-config/`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
       });
 

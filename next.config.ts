@@ -13,7 +13,7 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: "http",
-        hostname: "15.206.185.80",
+        hostname: "prod-be.examplesite.jp",
         port: "",
         pathname: "/media/gallery/**",
       },
