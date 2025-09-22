@@ -115,11 +115,7 @@ const Chat = () => {
   }, [currentMessages.length]);
 
   // Set initial thread
-  useEffect(() => {
-    if (threadsData?.results && threadsData.results.length > 0 && selectedThreadId === undefined) {
-      setSelectedThreadId(threadsData.results[0].id);
-    }
-  }, [threadsData?.results, selectedThreadId]);
+  // No auto-selection of first thread on load
 
   // Close sidebar when thread is selected on mobile
   useEffect(() => {
