@@ -34,7 +34,7 @@ const ThreadSkeleton = () => (
 );
 
 const Chat = () => {
-  const [selectedThreadId, setSelectedThreadId] = useState<number | null>(null);
+  const [selectedThreadId, setSelectedThreadId] = useState<number | undefined>(undefined);
   const [newMessage, setNewMessage] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [editingMessageId, setEditingMessageId] = useState<number | null>(null);
@@ -67,16 +67,17 @@ const Chat = () => {
     error: threadsError,
   } = useThreads(currentPage);
 
+
   const { data: selectedThread, isLoading: threadLoading } = useThread(
-    selectedThreadId!,
-    { enabled: !!selectedThreadId }
+    selectedThreadId,
+    { enabled: typeof selectedThreadId === 'number' }
   );
 
   const { data: messagesData, isLoading: messagesLoading } = useMessages(
     1,
     50,
-    { enabled: !!selectedThreadId },
-    selectedThreadId
+    { enabled: typeof selectedThreadId === 'number' },
+    typeof selectedThreadId === 'number' ? selectedThreadId : undefined
   );
 
   const sendMessageMutation = useSendMessage();
@@ -115,7 +116,7 @@ const Chat = () => {
 
   // Set initial thread
   useEffect(() => {
-    if (threadsData?.results?.length > 0 && selectedThreadId === null) {
+    if (threadsData?.results && threadsData.results.length > 0 && selectedThreadId === undefined) {
       setSelectedThreadId(threadsData.results[0].id);
     }
   }, [threadsData?.results, selectedThreadId]);
@@ -393,12 +394,14 @@ const Chat = () => {
             disabled={createThreadMutation.isPending}
             className="w-full bg-pri glass-card rounded-lg p-2.5 sm:p-3 text-white hover:bg-opacity-80 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50 text-sm sm:text-base"
           >
-            {createThreadMutation.isPending ? (
-              <Loader2 size={16} className="animate-spin sm:w-5 sm:h-5" />
-            ) : (
-              <Plus size={16} className="sm:w-5 sm:h-5" />
-            )}
-            新しいチャットルーム
+            <span className="flex items-center gap-2">
+              {createThreadMutation.isPending ? (
+                <Loader2 size={16} className="animate-spin sm:w-5 sm:h-5" />
+              ) : (
+                <Plus size={16} className="sm:w-5 sm:h-5" />
+              )}
+              新しいチャットルーム
+            </span>
           </button>
         </div>
 
@@ -421,7 +424,7 @@ const Chat = () => {
             threadsData?.results?.map((thread: Thread) => {
               const lastMessage = thread.messages?.[thread.messages.length - 1];
               const unreadCount =
-                thread.messages?.filter((msg) => !msg.is_read).length || 0;
+                thread.messages?.filter((msg) => !msg.is_read && msg.sender_kind !== "END_USER").length || 0;
               return (
                 <div
                   key={thread.id}
@@ -446,8 +449,24 @@ const Chat = () => {
                     {lastMessage?.text || "新しいチャット"}
                   </p>
                   {unreadCount > 0 && (
-                    <div className="flex justify-start mt-1 sm:mt-2">
-                      <span className="bg-brand-500 text-white text-xs rounded-full px-2 py-1 min-w-[1.5rem] text-center">
+                    <div className="flex items-center justify-end mt-1 sm:mt-2 w-full">
+                      <span
+                        className="premium-unread-badge animate-bounce"
+                        style={{
+                          background: 'linear-gradient(90deg, #4f8cff 0%, #6f4fff 100%)',
+                          color: '#fff',
+                          borderRadius: '9999px',
+                          minWidth: '1.8rem',
+                          padding: '0.25rem 0.7rem',
+                          fontWeight: 700,
+                          fontSize: '0.95rem',
+                          boxShadow: '0 2px 8px 0 rgba(79,140,255,0.25)',
+                          letterSpacing: '0.05em',
+                          border: '2px solid #fff',
+                          display: 'inline-block',
+                          textShadow: '0 1px 2px rgba(0,0,0,0.12)'
+                        }}
+                      >
                         {unreadCount}
                       </span>
                     </div>
