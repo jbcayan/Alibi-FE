@@ -351,7 +351,7 @@ const Chat = () => {
   }
 
   return (
-    <div className="main_gradient_bg pt-16 h-screen flex flex-col lg:flex-row overflow-hidden relative">
+    <div className="main_gradient_bg pt-6 h-screen flex flex-col lg:flex-row overflow-hidden relative">
       {/* Mobile Overlay */}
       {isMobile && showSidebar && (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden" />

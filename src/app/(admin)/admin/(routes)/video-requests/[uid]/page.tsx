@@ -258,11 +258,13 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
   switch (fileType.toLowerCase()) {
     case 'mp4':
     case '動画':
+    case 'video':
       extension = '.mp4';
       break;
     case 'wav':
     case 'mp3':
     case '音声':
+    case 'audio':
       extension = '.wav';
       break;
     case 'srt':
@@ -270,10 +272,11 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
     case 'ass':
     case 'ssa':
     case '字幕':
+    case 'subtitle':
       extension = '.srt';
       break;
     default:
-      extension = '.jpg'; // Default to jpg for images
+      extension = '';
   }
 
   const fullFileName = `${fileName}${extension}`;
@@ -306,8 +309,8 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
   const statusBadge = getStatusBadge(data.request_status);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-100 py-8 px-4">
-      <div className="mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-100 py-4 px-2 sm:py-8 sm:px-4">
+      <div className="mb-6 sm:mb-8">
         <Breadcrumbs
           items={[
             { label: "動画依頼", href: "/admin/video-requests" },
@@ -315,9 +318,9 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
           ]}
         />
       </div>
-      <div className="max-w-6xl mx-auto">
+      <div className="max-w-6xl mx-auto w-full">
         {/* Header */}
-        <div className="mb-8">
+        <div className="mb-4 sm:mb-6">
           <Link href={"/admin/video-requests"}>
             <button className="flex items-center cursor-pointer space-x-2 text-gray-600 hover:text-gray-800 transition-all duration-300 mb-4 group hover:scale-105">
               <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-300" />
@@ -325,8 +328,8 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
             </button>
           </Link>
 
-          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-6 mb-6">
-            <div className="flex items-center justify-between">
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 mb-4 sm:mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
               <div>
                 <div className="flex items-center space-x-3 mb-2">
                   <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg">
@@ -342,26 +345,26 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
                   </div>
                 </div>
               </div>
-              <div className={`px-6 py-3 rounded-full font-semibold text-sm shadow-lg backdrop-blur-sm border border-white/20 ${statusBadge.color} hover:scale-105 transition-transform duration-300`}>
+              <div className={`px-4 py-2 rounded-full font-semibold text-sm shadow-lg backdrop-blur-sm border border-white/20 ${statusBadge.color} hover:scale-105 transition-transform duration-300`}>
                 {statusBadge.label}
               </div>
             </div>
           </div>
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-8">
           {/* Main Content */}
-          <div className="lg:col-span-2 space-y-6">
+          <div className="lg:col-span-2 space-y-4 sm:space-y-6">
             {/* Request Details Card */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-8 hover:shadow-2xl transition-all duration-500">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 mb-4 sm:mb-6 hover:shadow-2xl transition-all duration-500">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center space-x-3">
                 <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg">
                   <Video className="w-6 h-6 text-white" />
                 </div>
                 <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">依頼内容</span>
               </h2>
 
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 <div className="group">
                   <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center space-x-2">
                     <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
@@ -402,8 +405,8 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
             </div>
 
             {/* Request Files Card */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-8 hover:shadow-2xl transition-all duration-500">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 mb-4 sm:mb-6 hover:shadow-2xl transition-all duration-500">
+              <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center space-x-3">
                 <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg">
                   <Eye className="w-6 h-6 text-white" />
                 </div>
@@ -411,7 +414,7 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
               </h2>
 
               {data.files && data.files.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                   {data.files.map((file, index) => (
                     <div
                       key={index}
@@ -471,15 +474,15 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Status Management Card */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-500">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 hover:shadow-2xl transition-all duration-500">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center space-x-3">
                 <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg shadow-lg">
                   <Clock className="w-5 h-5 text-white" />
                 </div>
                 <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">ステータス管理</span>
               </h3>
 
-              <div className="space-y-5">
+              <div className="space-y-4 sm:space-y-5">
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center space-x-2">
                     <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
@@ -524,15 +527,15 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
             </div>
 
             {/* Delivery Info Card */}
-            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-500">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-4 sm:p-6 hover:shadow-2xl transition-all duration-500">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center space-x-3">
                 <div className="p-2 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg shadow-lg">
                   <Calendar className="w-5 h-5 text-white" />
                 </div>
                 <span className="bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent">納品情報</span>
               </h3>
 
-              <div className="space-y-4">
+              <div className="space-y-4 sm:space-y-6">
                 <div className="bg-gradient-to-r from-green-50 to-teal-50 rounded-xl p-4 border border-green-200/50">
                   <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -569,7 +572,7 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
 
             {/* Video Processing Tips */}
             <div className="bg-gradient-to-br from-purple-100 via-pink-100 to-indigo-100 rounded-2xl border border-purple-200/50 p-6 shadow-xl hover:shadow-2xl transition-all duration-500">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
+              <h3 className="text-xl font-bold text-gray-900 mb-4 sm:mb-6 flex items-center space-x-3">
                 <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg">
                   <Video className="w-5 h-5 text-white" />
                 </div>

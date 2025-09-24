@@ -354,6 +354,7 @@ const AlibiSouvenir = () => {
       // UnivaPay expects amount in sen (1 JPY = 100 sen)
       const amountInSen = Math.round(Number(orderData.amount) * 100);
       console.log('[Souvenir] Amount in sen for UnivaPay:', amountInSen);
+      console.log('[Souvenir] Amount in JPY for backend:', Number(orderData.amount));
 
       const tokenId: string = await new Promise((resolve, reject) => {
         let widget;
@@ -398,7 +399,7 @@ const AlibiSouvenir = () => {
         transaction_token_id: tokenId, // Primary: what backend expects
         token_id: tokenId, // Fallback: alternative name
         token: tokenId, // Another fallback
-        amount: amountInSen, // Send amount in sen (integer) to backend
+        amount: Number(orderData.amount), // Send amount in JPY (not sen) to backend
         currency: "JPY",
         metadata: {
           order_id: orderId,
@@ -415,6 +416,7 @@ const AlibiSouvenir = () => {
         token_id: "***",
         token: "***"
       }, null, 2));
+      console.log('[Souvenir] Amount sent to backend (JPY):', payload.amount);
       const res = await fetch(`${baseUrl}/payment/univapay/charge/`, {
         method: "POST",
         headers: {
@@ -544,7 +546,7 @@ const AlibiSouvenir = () => {
   }
 
   return (
-    <div className=" pt-30 min-h-screen">
+    <div className=" min-h-screen">
       <div className="max-w-6xl mt-4 lg:mt-0 mx-auto px-4">
         <div className="text-center mb-8">
           <div className="flex justify-center gap-4 mb-6">
