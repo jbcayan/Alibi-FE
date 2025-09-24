@@ -272,13 +272,13 @@ const MainComponent: FC = () => {
                       {new Date(request.created_at).toLocaleString("ja-JP")}
                     </td>
                     <td className="px-4 py-4 text-sm">
-                      <Link
-                        href={`/admin/souvenir-requests/${request.uid}`}
-                        className="text-[#357AFF] hover:text-[#2E69DE] font-medium"
+                      <button
+                        disabled
+                        className="text-gray-400 cursor-not-allowed font-medium"
                       >
                         <i className="fa-regular fa-eye mr-1"></i>
                         詳細
-                      </Link>
+                      </button>
                     </td>
                   </tr>
                 ))}
