@@ -13,12 +13,15 @@ import {
   Eye,
   Music,
   Film,
+  Upload,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { baseUrl } from "@/constants/baseApi";
 import { getAuthHeaders } from "@/infrastructure/admin/utils/getAuthHeaders";
 import { useParams } from "next/navigation";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import Button from "@/components/admin/ui/Button";
 
 interface FileItem {
   file_type: string;
@@ -55,11 +58,16 @@ const VideoEditRequestDetailPage = () => {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const [statusSuccess, setStatusSuccess] = useState<string | null>(null);
+  const [showCompletionModal, setShowCompletionModal] = useState(false);
+  const [completedFiles, setCompletedFiles] = useState<{ [key: number]: File | null }>({});
+  const [completedPreviews, setCompletedPreviews] = useState<{ [key: number]: string }>({});
+  const [imageErrors, setImageErrors] = useState<{ [key: string]: boolean }>({});
+  const [imageUrls, setImageUrls] = useState<{ [key: string]: string }>({});
   const params = useParams();
   const uid =
-    typeof params.uid === "string"
+    params && typeof params.uid === "string"
       ? params.uid
-      : Array.isArray(params.uid)
+      : params && Array.isArray(params.uid)
       ? params.uid[0]
       : "";
 
@@ -94,6 +102,19 @@ const VideoEditRequestDetailPage = () => {
     e: React.ChangeEvent<HTMLSelectElement>
   ) => {
     const newStatus = e.target.value;
+
+    if (newStatus === "completed") {
+      setShowCompletionModal(true);
+      // Reset the select to current value
+      e.target.value = data?.request_status || "pending";
+      return;
+    }
+
+    // For other status changes, proceed normally
+    await updateStatus(newStatus);
+  };
+
+  const updateStatus = async (newStatus: string, files?: { [key: number]: File | null }) => {
     setStatusUpdating(true);
     setStatusError(null);
     setStatusSuccess(null);
@@ -104,16 +125,78 @@ const VideoEditRequestDetailPage = () => {
           ? localStorage.getItem("csrftoken")
           : null;
       if (csrfToken) headers["X-CSRFTOKEN"] = csrfToken;
-      headers["accept"] = "application/json";
+
+      let body: string | FormData;
+      if (files) {
+        // For completion with multiple file uploads
+        const formData = new FormData();
+        formData.append("request_status", newStatus);
+
+        // Add completed files
+        Object.entries(files).forEach(([index, file]) => {
+          if (file) {
+            formData.append(`admin_response_files`, file);
+          }
+        });
+
+        // Log FormData contents for debugging
+        console.log("FormData contents:");
+        for (let [key, value] of formData.entries()) {
+          if (value instanceof File) {
+            console.log(`${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
+          } else {
+            console.log(`${key}: ${value}`);
+          }
+        }
+
+        body = formData;
+        // Remove content-type header for FormData
+        delete headers["Content-Type"];
+      } else {
+        // For regular status updates
+        headers["Content-Type"] = "application/json";
+        body = JSON.stringify({ request_status: newStatus });
+      }
+
+      console.log("Making API request to:", `${baseUrl}/gallery/admin/video-audio-edit-requests/${uid}/update-status`);
+      console.log("Request method: PATCH");
+      console.log("Request headers:", headers);
+
       const response = await fetch(
         `${baseUrl}/gallery/admin/video-audio-edit-requests/${uid}/update-status`,
         {
           method: "PATCH",
           headers,
-          body: JSON.stringify({ request_status: newStatus }),
+          body,
         }
       );
-      if (!response.ok) throw new Error("ステータスの更新に失敗しました");
+
+      if (!response.ok) {
+        // Log response details for debugging
+        console.error("Response status:", response.status);
+        console.error("Response statusText:", response.statusText);
+        console.error("Response headers:", Object.fromEntries(response.headers.entries()));
+
+        // Try to get error details from response
+        let errorMessage = "ステータスの更新に失敗しました";
+        try {
+          const responseText = await response.text();
+          console.error("Raw response text:", responseText);
+
+          if (responseText.trim()) {
+            const errorData = JSON.parse(responseText);
+            console.error("API Error Response:", errorData);
+            errorMessage = errorData.detail || errorData.message || errorData.error || errorMessage;
+          } else {
+            console.error("Empty response body");
+            errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+          }
+        } catch (e) {
+          console.error("Failed to parse error response:", e);
+          errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
+      }
       setData((prev) => (prev ? { ...prev, request_status: newStatus } : prev));
       setStatusSuccess("ステータスが更新されました");
     } catch (err: any) {
@@ -129,14 +212,16 @@ const VideoEditRequestDetailPage = () => {
     return statusOption ? statusOption : STATUS_OPTIONS[0];
   };
 
-  const getFileStatusIcon = (status: string) => {
-    switch (status) {
-      case "完了":
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case "処理中":
-        return <Clock className="w-4 h-4 text-purple-500" />;
+  const getFileAcceptType = (fileType: string): string => {
+    switch (fileType.toLowerCase()) {
+      case "video":
+        return "video/*";
+      case "audio":
+        return "audio/*";
+      case "subtitle":
+        return ".srt,.vtt,.ass,.ssa";
       default:
-        return <AlertCircle className="w-4 h-4 text-gray-500" />;
+        return "*/*";
     }
   };
 
@@ -155,7 +240,46 @@ const VideoEditRequestDetailPage = () => {
     return <Film className="w-4 h-4 text-gray-600" />;
   };
 
-  if (loading) {
+  const getFileStatusIcon = (status: string) => {
+    switch (status) {
+      case "完了":
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+      case "処理中":
+        return <Loader2 className="w-4 h-4 text-yellow-600 animate-spin" />;
+      default:
+        return <Clock className="w-4 h-4 text-gray-600" />;
+    }
+  };
+
+// Updated handleDownloadFile to use a server-side API for downloads
+const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string) => {
+  // Determine file extension based on file type
+  let extension = '';
+  switch (fileType.toLowerCase()) {
+    case 'mp4':
+    case '動画':
+      extension = '.mp4';
+      break;
+    case 'wav':
+    case 'mp3':
+    case '音声':
+      extension = '.wav';
+      break;
+    case 'srt':
+    case 'vtt':
+    case 'ass':
+    case 'ssa':
+    case '字幕':
+      extension = '.srt';
+      break;
+    default:
+      extension = '.jpg'; // Default to jpg for images
+  }
+
+  const fullFileName = `${fileName}${extension}`;
+  const downloadUrl = `/api/download-file?url=${encodeURIComponent(fileUrl)}&name=${encodeURIComponent(fullFileName)}`;
+  window.open(downloadUrl, '_blank');
+};  if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 flex items-center justify-center">
         <div className="flex flex-col items-center space-y-4">
@@ -182,7 +306,7 @@ const VideoEditRequestDetailPage = () => {
   const statusBadge = getStatusBadge(data.request_status);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 py-8 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-indigo-100 py-8 px-4">
       <div className="mb-8">
         <Breadcrumbs
           items={[
@@ -191,30 +315,36 @@ const VideoEditRequestDetailPage = () => {
           ]}
         />
       </div>
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <Link href={"/admin/video-requests"}>
-            <button className="flex items-center cursor-pointer space-x-2 text-gray-600 hover:text-gray-800 transition-colors mb-4 group">
-              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <button className="flex items-center cursor-pointer space-x-2 text-gray-600 hover:text-gray-800 transition-all duration-300 mb-4 group hover:scale-105">
+              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform duration-300" />
               <span className="font-medium">一覧に戻る</span>
             </button>
           </Link>
 
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 mb-2">
-                動画/音声加工依頼詳細
-              </h1>
-              <p className="text-gray-600 flex items-center space-x-2">
-                <Film className="w-4 h-4" />
-                <span>依頼ID: {data.uid}</span>
-              </p>
-            </div>
-            <div
-              className={`px-4 py-2 rounded-full font-medium text-sm ${statusBadge.color}`}
-            >
-              {statusBadge.label}
+          <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-6 mb-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="flex items-center space-x-3 mb-2">
+                  <div className="p-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl shadow-lg">
+                    <Film className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h1 className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                      動画/音声加工依頼詳細
+                    </h1>
+                    <p className="text-gray-600 flex items-center space-x-2 mt-1">
+                      <span className="text-sm bg-gray-100 px-2 py-1 rounded-full">依頼ID: {data.uid}</span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+              <div className={`px-6 py-3 rounded-full font-semibold text-sm shadow-lg backdrop-blur-sm border border-white/20 ${statusBadge.color} hover:scale-105 transition-transform duration-300`}>
+                {statusBadge.label}
+              </div>
             </div>
           </div>
         </div>
@@ -223,68 +353,143 @@ const VideoEditRequestDetailPage = () => {
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
             {/* Request Details Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                <Video className="w-5 h-5 text-purple-600" />
-                <span>依頼内容</span>
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-8 hover:shadow-2xl transition-all duration-500">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg">
+                  <Video className="w-6 h-6 text-white" />
+                </div>
+                <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">依頼内容</span>
               </h2>
 
               <div className="space-y-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    依頼タイプ
+                <div className="group">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    <span>依頼タイプ</span>
                   </label>
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-3">
-                    <span className="text-purple-800 font-medium">
+                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 border border-purple-200/50 rounded-xl p-4 shadow-inner group-hover:shadow-lg transition-all duration-300">
+                    <span className="text-purple-800 font-semibold text-lg">
                       {data.request_type}
                     </span>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    詳細説明
+                <div className="group">
+                  <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span>詳細説明</span>
                   </label>
-                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                    <p className="text-gray-800 leading-relaxed">
+                  <div className="bg-gradient-to-r from-gray-50 to-blue-50 border border-gray-200/50 rounded-xl p-5 shadow-inner group-hover:shadow-lg transition-all duration-300">
+                    <p className="text-gray-800 leading-relaxed text-base">
                       {data.description}
                     </p>
                   </div>
                 </div>
 
                 {data.special_note && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      特記事項
+                  <div className="group">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full"></div>
+                      <span>特記事項</span>
                     </label>
-                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex items-start space-x-3">
-                      <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
-                      <p className="text-amber-800">{data.special_note}</p>
+                    <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200/50 rounded-xl p-5 flex items-start space-x-4 shadow-inner group-hover:shadow-lg transition-all duration-300">
+                      <AlertCircle className="w-6 h-6 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <p className="text-amber-800 leading-relaxed">{data.special_note}</p>
                     </div>
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Request Files Card */}
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-8 hover:shadow-2xl transition-all duration-500">
+              <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg">
+                  <Eye className="w-6 h-6 text-white" />
+                </div>
+                <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">依頼ファイル</span>
+              </h2>
+
+              {data.files && data.files.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {data.files.map((file, index) => (
+                    <div
+                      key={index}
+                      className="group border border-gray-200/50 rounded-xl p-5 bg-gradient-to-br from-gray-50 to-white shadow-lg hover:shadow-2xl transition-all duration-300 hover:scale-105"
+                    >
+                      <div className="aspect-square overflow-hidden rounded-xl bg-gradient-to-br from-white to-gray-50 mb-4 flex items-center justify-center shadow-inner border border-gray-100">
+                        {imageErrors[`request-${index}`] ? (
+                          <div className="flex items-center justify-center h-full text-gray-400">
+                            {getFileTypeIcon(file.file_type)}
+                          </div>
+                        ) : (
+                          <div className="flex items-center justify-center h-full">
+                            {getFileTypeIcon(file.file_type)}
+                            <div className="mt-2 text-xs text-gray-500 font-medium">
+                              {file.file_type}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm font-semibold text-gray-700">
+                            ファイルタイプ: {file.file_type}
+                          </p>
+                          <button
+                            onClick={() => handleDownloadFile(file.user_request_file, `request-file-${index + 1}`, file.file_type)}
+                            className="flex items-center space-x-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white px-3 py-2 rounded-lg shadow-md hover:shadow-lg transition-all duration-300 hover:scale-105 text-sm font-medium"
+                            title="依頼ファイルをダウンロード"
+                          >
+                            <Download className="w-4 h-4" />
+                            <span>DL</span>
+                          </button>
+                        </div>
+                        <div className="flex items-center space-x-2 bg-gray-100 rounded-lg px-3 py-2">
+                          <span className="text-sm font-medium text-gray-600">ステータス:</span>
+                          {getFileStatusIcon(file.file_status)}
+                          <span className="text-sm font-medium text-gray-800">
+                            {file.file_status === "完了" ? "完了" : file.file_status === "処理中" ? "処理中" : "未処理"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12 text-gray-500">
+                  <div className="p-4 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+                    <Video className="w-10 h-10 text-gray-400" />
+                  </div>
+                  <p className="text-lg font-medium">依頼ファイルが見つかりません</p>
+                </div>
+              )}
+            </div>
+
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
             {/* Status Management Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                ステータス管理
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-500">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg shadow-lg">
+                  <Clock className="w-5 h-5 text-white" />
+                </div>
+                <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">ステータス管理</span>
               </h3>
 
-              <div className="space-y-4">
+              <div className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    現在のステータス
+                  <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    <span>現在のステータス</span>
                   </label>
                   <select
                     value={data.request_status}
                     onChange={handleStatusChange}
                     disabled={statusUpdating}
-                    className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed"
+                    className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-gray-100 disabled:cursor-not-allowed shadow-inner bg-gradient-to-r from-white to-gray-50 hover:shadow-md transition-all duration-300"
                   >
                     {STATUS_OPTIONS.map((opt) => (
                       <option key={opt.value} value={opt.value}>
@@ -296,39 +501,44 @@ const VideoEditRequestDetailPage = () => {
 
                 {/* Status Messages */}
                 {statusUpdating && (
-                  <div className="flex items-center space-x-2 text-purple-600 text-sm">
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>更新中...</span>
+                  <div className="flex items-center space-x-3 text-blue-600 bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-inner">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span className="font-medium">更新中...</span>
                   </div>
                 )}
 
                 {statusSuccess && (
-                  <div className="flex items-center space-x-2 text-green-600 text-sm bg-green-50 border border-green-200 rounded-lg p-3">
-                    <CheckCircle className="w-4 h-4" />
-                    <span>{statusSuccess}</span>
+                  <div className="flex items-center space-x-3 text-green-600 bg-green-50 border border-green-200 rounded-xl p-4 shadow-inner">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">{statusSuccess}</span>
                   </div>
                 )}
 
                 {statusError && (
-                  <div className="flex items-center space-x-2 text-red-600 text-sm bg-red-50 border border-red-200 rounded-lg p-3">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>{statusError}</span>
+                  <div className="flex items-center space-x-3 text-red-600 bg-red-50 border border-red-200 rounded-xl p-4 shadow-inner">
+                    <AlertCircle className="w-5 h-5" />
+                    <span className="font-medium">{statusError}</span>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Delivery Info Card */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
-                <Calendar className="w-5 h-5 text-purple-600" />
-                <span>納品情報</span>
+            <div className="bg-white/80 backdrop-blur-xl rounded-2xl shadow-xl border border-white/20 p-6 hover:shadow-2xl transition-all duration-500">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-r from-green-500 to-teal-500 rounded-lg shadow-lg">
+                  <Calendar className="w-5 h-5 text-white" />
+                </div>
+                <span className="bg-gradient-to-r from-green-600 to-teal-600 bg-clip-text text-transparent">納品情報</span>
               </h3>
 
-              <div className="space-y-3">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">納品希望日</p>
-                  <p className="text-gray-900 font-medium">
+              <div className="space-y-4">
+                <div className="bg-gradient-to-r from-green-50 to-teal-50 rounded-xl p-4 border border-green-200/50">
+                  <div className="text-sm font-semibold text-gray-700 mb-2 flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    <span>納品希望日</span>
+                  </div>
+                  <p className="text-gray-900 font-bold text-lg">
                     {new Date(data.desire_delivery_date).toLocaleString(
                       "ja-JP",
                       {
@@ -342,45 +552,163 @@ const VideoEditRequestDetailPage = () => {
                   </p>
                 </div>
 
-                <div className="pt-3 border-t border-gray-100">
-                  <p className="text-sm text-gray-600">
-                    残り時間:{" "}
-                    {Math.ceil(
-                      (new Date(data.desire_delivery_date).getTime() -
-                        Date.now()) /
-                        (1000 * 60 * 60 * 24)
-                    )}{" "}
-                    日
-                  </p>
+                <div className="pt-4 border-t border-gray-200">
+                  <div className="bg-gradient-to-r from-orange-50 to-red-50 rounded-xl p-4 border border-orange-200/50">
+                    <p className="text-sm font-semibold text-gray-700 mb-1">残り時間</p>
+                    <p className="text-2xl font-bold text-orange-600">
+                      {Math.ceil(
+                        (new Date(data.desire_delivery_date).getTime() -
+                          Date.now()) /
+                          (1000 * 60 * 60 * 24)
+                      )} 日
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
 
             {/* Video Processing Tips */}
-            <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-xl border border-purple-100 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-3 flex items-center space-x-2">
-                <Video className="w-5 h-5 text-purple-600" />
-                <span>処理のポイント</span>
+            <div className="bg-gradient-to-br from-purple-100 via-pink-100 to-indigo-100 rounded-2xl border border-purple-200/50 p-6 shadow-xl hover:shadow-2xl transition-all duration-500">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center space-x-3">
+                <div className="p-2 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg shadow-lg">
+                  <Video className="w-5 h-5 text-white" />
+                </div>
+                <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">処理のポイント</span>
               </h3>
 
-              <div className="space-y-2 text-sm text-gray-700">
-                <div className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
-                  <span>高品質な出力には十分な処理時間が必要です</span>
+              <div className="space-y-4">
+                <div className="flex items-start space-x-3 p-3 bg-white/50 rounded-lg backdrop-blur-sm border border-white/30">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0 shadow-sm"></div>
+                  <span className="text-gray-700 leading-relaxed">高品質な出力には十分な処理時間が必要です</span>
                 </div>
-                <div className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
-                  <span>音声レベルの調整は最終段階で行います</span>
+                <div className="flex items-start space-x-3 p-3 bg-white/50 rounded-lg backdrop-blur-sm border border-white/30">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0 shadow-sm"></div>
+                  <span className="text-gray-700 leading-relaxed">音声レベルの調整は最終段階で行います</span>
                 </div>
-                <div className="flex items-start space-x-2">
-                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full mt-2 flex-shrink-0"></div>
-                  <span>カラーグレーディングで全体の統一感を調整</span>
+                <div className="flex items-start space-x-3 p-3 bg-white/50 rounded-lg backdrop-blur-sm border border-white/30">
+                  <div className="w-2 h-2 bg-purple-500 rounded-full mt-2 flex-shrink-0 shadow-sm"></div>
+                  <span className="text-gray-700 leading-relaxed">カラーグレーディングで全体の統一感を調整</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Completion Modal */}
+      {showCompletionModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="bg-gradient-to-br from-white via-purple-50/90 to-pink-50/90 rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-white/20 animate-in zoom-in-95 duration-500">
+            <div className="p-8 border-b border-gradient-to-r from-purple-200/50 to-pink-200/50 bg-gradient-to-r from-purple-50/50 to-pink-50/50">
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-bold text-gray-900 flex items-center space-x-3">
+                  <div className="p-3 bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl shadow-xl animate-pulse">
+                    <CheckCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <span className="bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">依頼完了</span>
+                </h3>
+                <button
+                  onClick={() => setShowCompletionModal(false)}
+                  className="p-2 hover:bg-red-50 rounded-xl transition-all duration-300 hover:scale-110 group"
+                >
+                  <X className="w-6 h-6 text-gray-400 group-hover:text-red-500 transition-colors" />
+                </button>
+              </div>
+              <p className="text-gray-600 mt-3 leading-relaxed">
+                完了したファイルをアップロードして、依頼を完了としてマークします。
+              </p>
+            </div>
+
+            <div className="p-8">
+              <div className="space-y-6">
+                {data.files?.map((file, index) => (
+                  <div key={index} className="bg-gradient-to-br from-white/80 to-gray-50/80 rounded-2xl border border-white/50 p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center space-x-4">
+                        <div className="p-3 bg-gradient-to-r from-purple-100 to-pink-100 rounded-xl shadow-md">
+                          {getFileTypeIcon(file.file_type)}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-900 text-lg">
+                            ファイル {index + 1}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            タイプ: {file.file_type}
+                          </p>
+                        </div>
+                      </div>
+                      <div className={`px-4 py-2 rounded-full text-sm font-semibold shadow-md ${
+                        file.file_status === "完了"
+                          ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 border border-green-200"
+                          : "bg-gradient-to-r from-yellow-100 to-orange-100 text-yellow-800 border border-yellow-200"
+                      }`}>
+                        {file.file_status === "完了" ? "完了" : "処理中"}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="block text-sm font-semibold text-gray-700 mb-2">
+                        完了ファイルのアップロード
+                      </label>
+                      <input
+                        type="file"
+                        accept={getFileAcceptType(file.file_type)}
+                        onChange={(e) => {
+                          const selectedFile = e.target.files?.[0] || null;
+                          setCompletedFiles(prev => ({
+                            ...prev,
+                            [index]: selectedFile
+                          }));
+                        }}
+                        className="w-full text-sm text-gray-500 file:mr-4 file:py-3 file:px-6 file:rounded-2xl file:border-0 file:text-sm file:font-semibold file:bg-gradient-to-r file:from-purple-50 file:to-pink-50 file:text-purple-700 hover:file:from-purple-100 hover:file:to-pink-100 file:shadow-md file:transition-all file:duration-300 hover:file:scale-105"
+                      />
+                      {completedFiles[index] && (
+                        <div className="flex items-center space-x-2 p-3 bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl border border-green-200/50">
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                          <p className="text-sm text-green-700 font-medium">
+                            {completedFiles[index].name} が選択されました
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex space-x-4 mt-8">
+                <Button
+                  onClick={() => setShowCompletionModal(false)}
+                  variant="secondary"
+                  className="flex-1 py-3 px-6 rounded-2xl border-2 border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-all duration-300 hover:scale-105 font-semibold shadow-md"
+                >
+                  キャンセル
+                </Button>
+                <Button
+                  onClick={async () => {
+                    await updateStatus("completed", completedFiles);
+                    setShowCompletionModal(false);
+                    setCompletedFiles({});
+                  }}
+                  disabled={statusUpdating || !Object.values(completedFiles).some(file => file)}
+                  className="flex-1 py-3 px-6 rounded-2xl bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+                >
+                  {statusUpdating ? (
+                    <div className="flex items-center space-x-3">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span>完了中...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center space-x-3">
+                      <CheckCircle className="w-5 h-5" />
+                      <span>完了としてマーク</span>
+                    </div>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

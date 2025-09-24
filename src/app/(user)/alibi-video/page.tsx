@@ -11,11 +11,13 @@ import { userApiClient } from "@/infrastructure/user/userAPIClient";
 import {
   UserVideoAudioEditRequest,
   UserVideoAudioEditRequestResponse,
+  UserVideoAudioEditRequestsListResponse,
 } from "@/infrastructure/user/utils/types";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Modal } from "@/components/ui/Modal";
 import Spinner from "@/components/ui/Spinner";
+import { baseUrl } from "@/constants/baseApi";
 
 type VideoEditingFormData = z.infer<typeof videoEditingSchema>;
 
@@ -73,7 +75,6 @@ const VideoEditingForm: React.FC = () => {
 
       // Create FormData
       const formData = new FormData();
-      formData.append("title", data.title);
       formData.append("description", data.description);
       formData.append("special_note", data.additionalNotes || "");
       formData.append("desire_delivery_date", desireDeliveryDate);
@@ -83,7 +84,7 @@ const VideoEditingForm: React.FC = () => {
       // Use fetch directly, not the current API client method
       const token = localStorage.getItem("accessToken");
       const response = await fetch(
-        "${baseUrl}/gallery/video-audio-edit-requests",
+        `${baseUrl}/gallery/video-audio-edit-requests`,
         {
           method: "POST",
           headers: token ? { Authorization: `Bearer ${token}` } : undefined,
@@ -137,14 +138,8 @@ const VideoEditingForm: React.FC = () => {
     setLoadingRequests(true);
     setRequestError(null);
     try {
-      const data = await userApiClient.getUserVideoAudioEditRequests();
-      setRequestList(
-        Array.isArray(data)
-          ? data
-          : Array.isArray(data.results)
-          ? data.results
-          : []
-      );
+      const data: UserVideoAudioEditRequestsListResponse = await userApiClient.getUserVideoAudioEditRequests();
+      setRequestList(data.results);
     } catch (err: any) {
       setRequestError(err.message || "依頼一覧の取得に失敗しました");
     } finally {
@@ -376,10 +371,11 @@ const VideoEditingForm: React.FC = () => {
                   {requestList.map((req) => (
                     <div
                       key={req.uid}
-                      className="rounded-xl bg-white/10 shadow-lg border border-white/20 hover:border-blue-400 transition-all p-6 flex flex-col gap-2 glass-card"
+                      className="rounded-xl bg-white/10 backdrop-blur-md border border-white/20 shadow-lg hover:shadow-xl hover:border-blue-400 transition-all p-6 flex flex-col gap-3 text-white"
                     >
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-blue-400 font-bold text-base flex items-center gap-2">
+                      {/* Header with Title and Status */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-blue-400 font-semibold text-base flex items-center gap-2">
                           <svg
                             width="20"
                             height="20"
@@ -400,58 +396,95 @@ const VideoEditingForm: React.FC = () => {
                               strokeLinejoin="round"
                             />
                           </svg>
-                          {req.title}
+                          {req.description}
                         </span>
+
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                            req.request_status === "completed"
-                              ? "bg-green-100 text-green-700"
-                              : req.request_status === "pending"
-                              ? "bg-yellow-100 text-yellow-700"
-                              : "bg-blue-100 text-blue-700"
+                          className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
+                            req.request_status === "completed" 
+                              ? "bg-gradient-to-r from-green-400 to-green-600" 
+                              : req.request_status === "pending" 
+                              ? "bg-gradient-to-r from-yellow-400 to-yellow-600" 
+                              : req.request_status === "approved" 
+                              ? "bg-gradient-to-r from-blue-400 to-blue-600" 
+                              : "bg-gradient-to-r from-gray-400 to-gray-600"
                           }`}
                         >
                           {req.request_status}
                         </span>
                       </div>
-                      <div className="text-gray-100 text-sm mb-1 line-clamp-2">
-                        {req.description}
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-300 mb-1">
-                        <span className="font-medium">編集タイプ:</span>
-                        <span className="capitalize">
-                          {req.edit_type
-                            ? req.edit_type.replace(/_/g, " ")
-                            : "N/A"}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-300 mb-1">
-                        <span className="font-medium">納期:</span>
-                        <span>
-                          {new Date(
-                            req.desire_delivery_date
-                          ).toLocaleDateString()}
-                        </span>
-                      </div>
+
+                      {/* Special Note */}
                       {req.special_note && (
-                        <div className="text-xs text-gray-400 mb-1">
-                          <span className="font-medium">メモ:</span>{" "}
+                        <div className="text-sm text-gray-300">
+                          <span className="font-medium text-white">メモ:</span>{" "}
                           {req.special_note}
                         </div>
                       )}
-                      {Array.isArray(req.request_files) &&
-                        req.request_files.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {req.request_files.map((file, idx) => (
-                              <span
-                                key={idx}
-                                className="inline-block bg-blue-100 text-blue-700 px-2 py-1 rounded text-xs font-mono truncate max-w-[120px]"
-                              >
-                                {file}
-                              </span>
-                            ))}
-                          </div>
-                        )}
+
+                      {/* Request Type */}
+                      <div className="flex items-center gap-2 text-sm text-gray-300">
+                        <span className="font-medium text-white">
+                          編集タイプ:
+                        </span>
+                        <span className="capitalize">
+                          {req.request_type
+                            ? req.request_type.replace(/_/g, " ")
+                            : "N/A"}
+                        </span>
+                      </div>
+
+                      {/* Delivery Date */}
+                      <div className="flex items-center gap-2 text-sm text-gray-300">
+                        <span className="font-medium text-white">
+                          納期:
+                        </span>
+                        <span>
+                          {new Date(
+                            req.desire_delivery_date
+                          ).toLocaleDateString("en-GB", {
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
+                          })}
+                        </span>
+                      </div>
+
+                      {/* Files Preview */}
+                      {Array.isArray(req.files) && req.files.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {req.files.map((fileObj, idx) =>
+                            fileObj.user_request_file ? (
+                              <div key={idx} className="flex flex-col items-center">
+                                <a
+                                  href={fileObj.user_request_file.startsWith('http') ? fileObj.user_request_file : `${baseUrl}${fileObj.user_request_file}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block border border-white/30 rounded-md overflow-hidden bg-white/10 hover:bg-white/20 transition-all"
+                                  style={{ width: 100, height: 80 }}
+                                >
+                                  {fileObj.file_type === 'video' ? (
+                                    <video
+                                      src={fileObj.user_request_file.startsWith('http') ? fileObj.user_request_file : `${baseUrl}${fileObj.user_request_file}`}
+                                      className="object-cover w-full h-full"
+                                      style={{ width: '100%', height: '100%' }}
+                                      muted
+                                    />
+                                  ) : (
+                                    <img
+                                      src={fileObj.user_request_file.startsWith('http') ? fileObj.user_request_file : `${baseUrl}${fileObj.user_request_file}`}
+                                      alt={`File ${idx + 1}`}
+                                      className="object-cover w-full h-full"
+                                      style={{ width: '100%', height: '100%' }}
+                                    />
+                                  )}
+                                </a>
+                                <span className="text-xs text-gray-200 mt-1">{fileObj.file_type} {idx + 1}</span>
+                              </div>
+                            ) : null
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

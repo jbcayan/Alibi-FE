@@ -9,8 +9,10 @@ import {
   LoginResponse,
   UserPhotoEditRequest,
   UserPhotoEditRequestResponse,
+  UserPhotoEditRequestsListResponse,
   UserVideoAudioEditRequest,
   UserVideoAudioEditRequestResponse,
+  UserVideoAudioEditRequestsListResponse,
   UserSouvenirRequestResponse,
 } from "./utils/types";
 import { baseUrl } from "@/constants/baseApi";
@@ -262,7 +264,7 @@ class UserAPIClient {
   }
 
   public async getUserVideoAudioEditRequests(): Promise<
-    UserVideoAudioEditRequestResponse[]
+    UserVideoAudioEditRequestsListResponse
   > {
     try {
       const response = await fetch(
@@ -286,7 +288,7 @@ class UserAPIClient {
   }
 
   public async getUserPhotoEditRequests(): Promise<
-    UserPhotoEditRequestResponse[]
+    UserPhotoEditRequestsListResponse
   > {
     try {
       const response = await fetch(

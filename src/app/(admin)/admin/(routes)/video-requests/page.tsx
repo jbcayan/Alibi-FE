@@ -81,26 +81,6 @@ const MainComponent: FC = () => {
     fetchRequests();
   };
 
-  const handleStatusChange = async (
-    requestId: string,
-    newStatus: VideoRequest["request_status"]
-  ) => {
-    try {
-      const response = await fetch("/api/admin/video-requests/update", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ requestId, status: newStatus }),
-      });
-
-      if (!response.ok) throw new Error("ステータスの更新に失敗しました");
-
-      fetchRequests();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "不明なエラーが発生しました");
-    }
-  };
-
   return (
     <div className="flex min-h-screen flex-col lg:p-4 bg-white">
       <div className="mb-8">
@@ -201,21 +181,25 @@ const MainComponent: FC = () => {
                       {request.description}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">
-                      <select
-                        value={request.request_status}
-                        onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                          handleStatusChange(
-                            request.uid,
-                            e.target.value as VideoRequest["request_status"]
-                          )
-                        }
-                        className="rounded border border-gray-300 px-2 py-1 text-sm"
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          request.request_status === "pending"
+                            ? "bg-gray-100 text-gray-700"
+                            : request.request_status === "in_progress"
+                            ? "bg-purple-100 text-purple-700"
+                            : request.request_status === "completed"
+                            ? "bg-green-100 text-green-700"
+                            : "bg-red-100 text-red-700"
+                        }`}
                       >
-                        <option value="pending">未着手</option>
-                        <option value="in_progress">作業中</option>
-                        <option value="completed">完了</option>
-                        <option value="cancelled">キャンセル</option>
-                      </select>
+                        {request.request_status === "pending"
+                          ? "未着手"
+                          : request.request_status === "in_progress"
+                          ? "作業中"
+                          : request.request_status === "completed"
+                          ? "完了"
+                          : "キャンセル"}
+                      </span>
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">
                       {new Date(request.created_at).toLocaleString("ja-JP")}

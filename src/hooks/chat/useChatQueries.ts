@@ -192,6 +192,28 @@ export const useChatQueries = () => {
           // Update the specific thread in cache
           queryClient.setQueryData(CHAT_KEYS.threadDetail(threadId), data);
 
+          // Optimistically update threads list to mark messages as read
+          queryClient.setQueryData(
+            CHAT_KEYS.threadsList({ page: 1 }),
+            (oldData: any) => {
+              if (!oldData) return oldData;
+              return {
+                ...oldData,
+                results: oldData.results?.map((thread: any) =>
+                  thread.id === threadId
+                    ? {
+                        ...thread,
+                        messages: thread.messages?.map((msg: any) => ({
+                          ...msg,
+                          is_read: true,
+                        })),
+                      }
+                    : thread
+                ),
+              };
+            }
+          );
+
           // Invalidate all thread queries to refresh unread counts
           queryClient.invalidateQueries({
             queryKey: CHAT_KEYS.threads(),

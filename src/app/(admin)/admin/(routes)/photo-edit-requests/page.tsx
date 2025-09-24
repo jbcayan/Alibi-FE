@@ -77,25 +77,6 @@ const MainComponent: React.FC = () => {
     fetchRequests();
   };
 
-  const handleStatusChange = async (requestId: string, newStatus: string) => {
-    try {
-      const response = await fetch(
-        `${baseUrl}/gallery/admin/photo-edit-requests`,
-        {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ uid: requestId, status: newStatus }),
-        }
-      );
-
-      if (!response.ok) throw new Error("ステータスの更新に失敗しました");
-      fetchRequests();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "予期しないエラーが発生しました");
-    }
-  };
-
   return (
     <div className="flex min-h-screen flex-col lg:p-4 bg-white">
       <div className="mb-8">
@@ -196,18 +177,10 @@ const MainComponent: React.FC = () => {
                       {request.description}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">
-                      <select
-                        value={request.request_status}
-                        onChange={(e) =>
-                          handleStatusChange(request.uid, e.target.value)
-                        }
-                        className="rounded border border-gray-300 px-2 py-1 text-sm"
-                      >
-                        <option value="pending">未着手</option>
-                        <option value="in_progress">作業中</option>
-                        <option value="completed">完了</option>
-                        <option value="cancelled">キャンセル</option>
-                      </select>
+                      {request.request_status === "pending" && "未着手"}
+                      {request.request_status === "in_progress" && "作業中"}
+                      {request.request_status === "completed" && "完了"}
+                      {request.request_status === "cancelled" && "キャンセル"}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-700">
                       {new Date(request.desire_delivery_date).toLocaleString(

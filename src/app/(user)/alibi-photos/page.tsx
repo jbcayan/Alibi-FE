@@ -4,7 +4,6 @@ import React, { useEffect, useState } from "react";
 import Menu from "@/components/home/Menu";
 import { userApiClient } from "@/infrastructure/user/userAPIClient";
 import { GalleryItem } from "@/infrastructure/user/utils/types";
-import { saveAs } from "file-saver";
 import { FiDownload } from "react-icons/fi";
 import Button from "@/components/ui/Button";
 import { X } from "lucide-react";
@@ -38,20 +37,10 @@ const AlibiPhotos = () => {
     setSelectedProduct(productId);
   };
 
-  // Download a single image (fetch as blob for CORS)
-  const handleDownload = async (url: string, title: string) => {
-    try {
-      const response = await fetch(url, { mode: "cors" });
-      if (!response.ok) throw new Error("Network response was not ok");
-      const blob = await response.blob();
-      saveAs(blob, title + ".jpg");
-    } catch (err) {
-      // Fallback: open in new tab if CORS fails
-      window.open(url, "_blank");
-      alert(
-        "画像のダウンロードに失敗しました。新しいタブで画像が開きますので、右クリックで保存してください。"
-      );
-    }
+  // Download a single image
+  const handleDownload = (url: string, title: string) => {
+    const downloadUrl = `/api/download-image?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`;
+    window.open(downloadUrl, '_blank');
   };
 
   // Pagination logic

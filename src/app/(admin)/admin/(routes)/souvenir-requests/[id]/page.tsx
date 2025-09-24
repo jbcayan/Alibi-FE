@@ -1,43 +1,39 @@
 "use client";
-import Button from "@/components/admin/ui/Button";
 import React, { useEffect, useState, ChangeEvent, FC } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { baseUrl } from "@/constants/baseApi";
 
 // Interfaces
-interface RequestDetail {
-  id: string | number;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string;
-  souvenir_type: string;
-  souvenir_description: string;
-  desired_date: string;
-  delivery_address: string;
-  special_instructions: string;
-  budget: number;
-  status: "pending" | "in_progress" | "completed" | "cancelled" | string;
+interface SouvenirRequestDetail {
+  uid: string;
+  description: string;
+  special_note: string;
+  request_status: string;
+  request_type: string;
+  desire_delivery_date: string;
   created_at: string;
-  updated_at: string;
-  admin_notes: string;
+  request_files: Array<{
+    file: string;
+    file_type: string;
+    file_status: string;
+    quantity: number;
+  }>;
 }
 
-interface RequestDetailsProps {
-  params: { id: string };
-}
+interface RequestDetailsProps {}
 
-const RequestDetailsPage: FC<RequestDetailsProps> = ({ params }) => {
+const RequestDetailsPage: FC<RequestDetailsProps> = () => {
   const router = useRouter();
-  const [request, setRequest] = useState<RequestDetail | null>(null);
+  const params = useParams();
+  const id = params && typeof params.id === "string" ? params.id : "";
+  const [request, setRequest] = useState<SouvenirRequestDetail | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [adminNotes, setAdminNotes] = useState<string>("");
-  const [isUpdating, setIsUpdating] = useState<boolean>(false);
 
   useEffect(() => {
-    fetchRequestDetails();
-  }, [params.id]);
+    if (id) fetchRequestDetails();
+  }, [id]);
 
   const fetchRequestDetails = async () => {
     try {
@@ -49,7 +45,7 @@ const RequestDetailsPage: FC<RequestDetailsProps> = ({ params }) => {
           : null;
 
       const response = await fetch(
-        `${baseUrl}/gallery/admin/souvenir-requests/${params.id}`,
+        `${baseUrl}/gallery/admin/souvenir-requests/${id}`,
         {
           method: "GET",
           headers: {
@@ -65,84 +61,10 @@ const RequestDetailsPage: FC<RequestDetailsProps> = ({ params }) => {
 
       const data = await response.json();
       setRequest(data);
-      setAdminNotes(data.admin_notes || "");
     } catch (error) {
       setError("依頼詳細の取得に失敗しました");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleStatusChange = async (newStatus: string) => {
-    if (!request) return;
-
-    try {
-      setIsUpdating(true);
-      const accessToken =
-        typeof window !== "undefined"
-          ? localStorage.getItem("accessToken")
-          : null;
-
-      const response = await fetch(
-        `${baseUrl}/gallery/admin/souvenir-requests/${request.id}/update`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          },
-          body: JSON.stringify({
-            status: newStatus,
-            admin_notes: adminNotes,
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("ステータスの更新に失敗しました");
-      }
-
-      fetchRequestDetails();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message);
-    } finally {
-      setIsUpdating(false);
-    }
-  };
-
-  const handleNotesUpdate = async () => {
-    if (!request) return;
-
-    try {
-      setIsUpdating(true);
-      const accessToken =
-        typeof window !== "undefined"
-          ? localStorage.getItem("accessToken")
-          : null;
-
-      const response = await fetch(
-        `${baseUrl}/gallery/admin/souvenir-requests/${request.id}/notes`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          },
-          body: JSON.stringify({ admin_notes: adminNotes }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("メモの更新に失敗しました");
-      }
-
-      fetchRequestDetails();
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message);
-    } finally {
-      setIsUpdating(false);
     }
   };
 
@@ -230,7 +152,7 @@ const RequestDetailsPage: FC<RequestDetailsProps> = ({ params }) => {
             戻る
           </button>
           <h1 className="text-lg font-semibold text-gray-800 sm:text-2xl">
-            依頼詳細 - ID: {request.id}
+            依頼詳細 - ID: {request.uid}
           </h1>
         </div>
       </header>
@@ -253,37 +175,10 @@ const RequestDetailsPage: FC<RequestDetailsProps> = ({ params }) => {
               <div className="grid gap-4 sm:grid-cols-2">
                 <div>
                   <label className="block text-sm font-medium text-gray-500">
-                    依頼者名
+                    依頼タイプ
                   </label>
                   <p className="mt-1 text-sm text-gray-900">
-                    {request.customer_name}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">
-                    メールアドレス
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {request.customer_email}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">
-                    電話番号
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {request.customer_phone}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">
-                    お土産種類
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    {request.souvenir_type}
+                    {request.request_type}
                   </p>
                 </div>
 
@@ -292,47 +187,66 @@ const RequestDetailsPage: FC<RequestDetailsProps> = ({ params }) => {
                     希望納期
                   </label>
                   <p className="mt-1 text-sm text-gray-900">
-                    {new Date(request.desired_date).toLocaleDateString("ja-JP")}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-500">
-                    予算
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900">
-                    ¥{request.budget?.toLocaleString() || "未設定"}
+                    {new Date(request.desire_delivery_date).toLocaleDateString("ja-JP")}
                   </p>
                 </div>
 
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-500">
-                    お土産詳細説明
+                    依頼内容
                   </label>
                   <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-                    {request.souvenir_description}
+                    {request.description}
                   </p>
                 </div>
 
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-500">
-                    配送先住所
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-                    {request.delivery_address}
-                  </p>
-                </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-500">
-                    特別な指示
-                  </label>
-                  <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
-                    {request.special_instructions || "なし"}
-                  </p>
-                </div>
+                {request.special_note && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-sm font-medium text-gray-500">
+                      特記事項
+                    </label>
+                    <p className="mt-1 text-sm text-gray-900 whitespace-pre-wrap">
+                      {request.special_note}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Request Files */}
+            {request.request_files && request.request_files.length > 0 && (
+              <div className="rounded-lg border border-gray-200 bg-white p-6 mt-6">
+                <h2 className="mb-4 text-xl font-semibold text-gray-800">
+                  依頼ファイル
+                </h2>
+
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {request.request_files.map((file, index) => (
+                    <div key={index} className="border border-gray-200 rounded-lg p-4">
+                      <div className="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+                        {file.file_type === 'image' ? (
+                          <img
+                            src={file.file}
+                            alt={`File ${index + 1}`}
+                            className="max-w-full max-h-full object-contain rounded"
+                          />
+                        ) : (
+                          <div className="text-gray-400">
+                            <i className="fa-solid fa-file text-2xl"></i>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-medium text-gray-900">ファイル {index + 1}</p>
+                        <p className="text-gray-600">タイプ: {file.file_type}</p>
+                        <p className="text-gray-600">数量: {file.quantity}</p>
+                        <p className="text-gray-600">ステータス: {file.file_status}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Status and Actions */}
@@ -347,63 +261,14 @@ const RequestDetailsPage: FC<RequestDetailsProps> = ({ params }) => {
                 <label className="block text-sm font-medium text-gray-500 mb-2">
                   現在のステータス
                 </label>
-                {getStatusBadge(request.status)}
-              </div>
-
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-500 mb-2">
-                  ステータス変更
-                </label>
-                <select
-                  value={request.status}
-                  onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                    handleStatusChange(e.target.value)
-                  }
-                  disabled={isUpdating}
-                  className="w-full rounded border border-gray-300 px-3 py-2 text-sm"
-                >
-                  <option value="pending">未着手</option>
-                  <option value="in_progress">作業中</option>
-                  <option value="completed">完了</option>
-                  <option value="cancelled">キャンセル</option>
-                </select>
+                {getStatusBadge(request.request_status)}
               </div>
 
               <div className="text-xs text-gray-500">
                 <p>
-                  依頼日時:{" "}
-                  {new Date(request.created_at).toLocaleString("ja-JP")}
-                </p>
-                <p>
-                  更新日時:{" "}
-                  {new Date(request.updated_at).toLocaleString("ja-JP")}
+                  依頼日時: {new Date(request.created_at).toLocaleString("ja-JP")}
                 </p>
               </div>
-            </div>
-
-            {/* Admin Notes */}
-            <div className="rounded-lg border border-gray-200 bg-white p-6">
-              <h3 className="mb-4 text-lg font-semibold text-gray-800">
-                管理者メモ
-              </h3>
-
-              <textarea
-                value={adminNotes}
-                onChange={(e: ChangeEvent<HTMLTextAreaElement>) =>
-                  setAdminNotes(e.target.value)
-                }
-                placeholder="管理者用のメモを入力してください..."
-                rows={6}
-                className="w-full rounded border border-gray-300 px-3 py-2 text-sm resize-none"
-              />
-
-              <Button
-                onClick={handleNotesUpdate}
-                disabled={isUpdating}
-                className="mt-3 w-full"
-              >
-                {isUpdating ? "更新中..." : "メモを保存"}
-              </Button>
             </div>
           </div>
         </div>

@@ -6,19 +6,25 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { baseUrl } from "@/constants/baseApi";
 
 // Interfaces
-interface Request {
-  uid: string | number;
-  customer_name: string;
-  souvenir_type: string;
-  desired_date: string;
-  status: "pending" | "in_progress" | "completed" | "cancelled" | string;
+interface SouvenirRequest {
+  uid: string;
+  description: string;
+  special_note: string;
+  request_status: string;
+  request_type: string;
+  desire_delivery_date: string;
   created_at: string;
-  budget?: number;
+  request_files: Array<{
+    file: string;
+    file_type: string;
+    file_status: string;
+    quantity: number;
+  }>;
 }
 
 const MainComponent: FC = () => {
-  const [requests, setRequests] = useState<Request[]>([]);
-  const [searchRequests, setSearchRequests] = useState<Request[]>([]);
+  const [requests, setRequests] = useState<SouvenirRequest[]>([]);
+  const [searchRequests, setSearchRequests] = useState<SouvenirRequest[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
@@ -84,48 +90,6 @@ const MainComponent: FC = () => {
     e.preventDefault();
     setCurrentPage(1); // Reset to first page when searching
     fetchRequests();
-  };
-
-  const handleStatusChange = async (
-    requestId: string | number,
-    newStatus: string
-  ) => {
-    try {
-      const accessToken =
-        typeof window !== "undefined"
-          ? localStorage.getItem("accessToken")
-          : null;
-
-      const response = await fetch(
-        `${baseUrl}/gallery/admin/souvenir-requests/${requestId}/update`,
-        {
-          method: "PUT", // Changed from POST to PUT for better REST practices
-          headers: {
-            "Content-Type": "application/json",
-            ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
-          },
-          body: JSON.stringify({ status: newStatus }),
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("ステータスの更新に失敗しました");
-      }
-
-      // Update the local state immediately for better UX
-      setRequests((prevRequests) =>
-        prevRequests.map((request) =>
-          request.uid === requestId
-            ? { ...request, status: newStatus }
-            : request
-        )
-      );
-    } catch (err: any) {
-      console.error("Status update error:", err);
-      setError(err.message);
-      // Refresh data to ensure consistency
-      fetchRequests();
-    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -273,16 +237,10 @@ const MainComponent: FC = () => {
                     依頼ID
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
-                    依頼者
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
-                    お土産種類
+                    依頼内容
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
                     希望納期
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
-                    予算
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
                     ステータス
@@ -301,38 +259,14 @@ const MainComponent: FC = () => {
                     <td className="px-4 py-4 text-sm text-gray-600 font-mono">
                       #{request.uid}
                     </td>
-                    <td className="px-4 py-4 text-sm text-gray-800 font-medium">
-                      {request.customer_name}
+                    <td className="px-4 py-4 text-sm text-gray-800 font-medium max-w-xs truncate">
+                      {request.description}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">
-                      {request.souvenir_type}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {new Date(request.desired_date).toLocaleDateString(
-                        "ja-JP"
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {request.budget
-                        ? `¥${request.budget.toLocaleString()}`
-                        : "-"}
+                      {new Date(request.desire_delivery_date).toLocaleDateString("ja-JP")}
                     </td>
                     <td className="px-4 py-4 text-sm">
-                      <div className="flex flex-col gap-2">
-                        {getStatusBadge(request.status)}
-                        <select
-                          value={request.status}
-                          onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                            handleStatusChange(request.uid, e.target.value)
-                          }
-                          className="rounded border border-gray-300 px-2 py-1 text-xs focus:border-[#357AFF] focus:outline-none focus:ring-1 focus:ring-[#357AFF]"
-                        >
-                          <option value="pending">未着手</option>
-                          <option value="in_progress">作業中</option>
-                          <option value="completed">完了</option>
-                          <option value="cancelled">キャンセル</option>
-                        </select>
-                      </div>
+                      {getStatusBadge(request.request_status)}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">
                       {new Date(request.created_at).toLocaleString("ja-JP")}
@@ -351,7 +285,7 @@ const MainComponent: FC = () => {
                 {requests.length === 0 && !loading && (
                   <tr>
                     <td
-                      colSpan={8}
+                      colSpan={6}
                       className="px-4 py-12 text-center text-sm text-gray-500"
                     >
                       <div className="flex flex-col items-center gap-2">

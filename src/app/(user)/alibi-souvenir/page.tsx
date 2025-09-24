@@ -461,6 +461,7 @@ const AlibiSouvenir = () => {
         order_id: orderId,
         amount: Number(orderData.amount), // Use original JPY amount for souvenir order
         payment_verified: true,
+        request_status: "approved", // Set status to approved after successful payment
       };
       const souvenirRes = await fetch(`${baseUrl}/gallery/souvenir-requests`, {
         method: "POST",
@@ -720,7 +721,8 @@ const AlibiSouvenir = () => {
                             },
                             valueAsNumber: true,
                           })}
-                          className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
+                          disabled
+                          className="w-full p-3 rounded-lg border border-white/20 bg-white/10 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400 cursor-not-allowed opacity-75"
                           placeholder="Enter amount in yen"
                         />
                         {errors.amount && (
@@ -869,16 +871,18 @@ const AlibiSouvenir = () => {
                                 ? "bg-yellow-500 text-black"
                                 : req.request_status === "rejected"
                                 ? "bg-red-500 text-white"
-                                : "bg-blue-500 text-white"
+                                : req.request_status === "new"
+                                ? "bg-blue-500 text-white"
+                                : "bg-gray-500 text-white"
                             }`}
                           >
-                            {req.request_status === "approved" && "承認済み"}
+                            {req.request_status === "approved" && "支払済み"}
                             {req.request_status === "pending" && "審査中"}
                             {req.request_status === "rejected" && "却下"}
-                            {!["approved", "pending", "rejected"].includes(
+                            {req.request_status === "new" && "未払い"}
+                            {!["approved", "pending", "rejected", "new"].includes(
                               req.request_status
                             ) && req.request_status}
-                            {req.request_status ? req.request_status : "Status"}
                           </span>
                         </div>
 

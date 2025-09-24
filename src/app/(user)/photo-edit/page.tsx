@@ -12,11 +12,13 @@ import { userApiClient } from "@/infrastructure/user/userAPIClient";
 import {
   UserPhotoEditRequest,
   UserPhotoEditRequestResponse,
+  UserPhotoEditRequestsListResponse,
 } from "@/infrastructure/user/utils/types";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import Spinner from "@/components/ui/Spinner";
 import { ClipboardList } from "lucide-react";
+import { baseUrl } from "@/constants/baseApi";
 
 type PhotoEditingFormData = z.infer<typeof photoEditingSchema>;
 
@@ -121,14 +123,8 @@ export default function PhotoEditingPage() {
     setLoadingRequests(true);
     setRequestError(null);
     try {
-      const data = await userApiClient.getUserPhotoEditRequests();
-      setRequestList(
-        Array.isArray(data)
-          ? data
-          : Array.isArray(data.results)
-          ? data.results
-          : []
-      );
+      const data: UserPhotoEditRequestsListResponse = await userApiClient.getUserPhotoEditRequests();
+      setRequestList(data.results);
     } catch (err: any) {
       setRequestError(err.message || "依頼一覧の取得に失敗しました");
     } finally {
@@ -326,11 +322,13 @@ export default function PhotoEditingPage() {
 
                         <span
                           className={`px-3 py-1 rounded-full text-xs font-semibold shadow-sm ${
-                            req.request_status === "completed"
-                              ? "bg-gradient-to-r from-green-400 to-green-600"
-                              : req.request_status === "pending"
-                              ? "bg-gradient-to-r from-yellow-400 to-yellow-600"
-                              : "bg-gradient-to-r from-blue-400 to-blue-600"
+                            req.request_status === "completed" 
+                              ? "bg-gradient-to-r from-green-400 to-green-600" 
+                              : req.request_status === "pending" 
+                              ? "bg-gradient-to-r from-yellow-400 to-yellow-600" 
+                              : req.request_status === "approved" 
+                              ? "bg-gradient-to-r from-blue-400 to-blue-600" 
+                              : "bg-gradient-to-r from-gray-400 to-gray-600"
                           }`}
                         >
                           {req.request_status}
@@ -362,22 +360,32 @@ export default function PhotoEditingPage() {
                       </div>
 
                       {/* Files Preview */}
-                      {Array.isArray(req.request_files) &&
-                        req.request_files.length > 0 && (
-                          <div className="flex flex-wrap gap-2 mt-2">
-                            {req.request_files.map((file, idx) => (
-                              <a
-                                key={idx}
-                                href={file}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-block bg-white/10 hover:bg-white/20 text-white border border-white/30 px-3 py-1 rounded-md text-xs font-mono truncate max-w-[140px] transition-all"
-                              >
-                                Image {idx + 1}
-                              </a>
-                            ))}
-                          </div>
-                        )}
+                      {Array.isArray(req.files) && req.files.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-2">
+                          {req.files.map((fileObj, idx) =>
+                            fileObj.user_request_file ? (
+                              <div key={idx} className="flex flex-col items-center">
+                                <a
+                                  href={fileObj.user_request_file.startsWith('http') ? fileObj.user_request_file : `${baseUrl}${fileObj.user_request_file}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="block border border-white/30 rounded-md overflow-hidden bg-white/10 hover:bg-white/20 transition-all"
+                                  style={{ width: 100, height: 80 }}
+                                >
+                                  <Image
+                                    src={fileObj.user_request_file.startsWith('http') ? fileObj.user_request_file : `${baseUrl}${fileObj.user_request_file}`}
+                                    alt={`Image ${idx + 1}`}
+                                    width={100}
+                                    height={80}
+                                    className="object-cover w-full h-full"
+                                  />
+                                </a>
+                                <span className="text-xs text-gray-200 mt-1">Image {idx + 1}</span>
+                              </div>
+                            ) : null
+                          )}
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>

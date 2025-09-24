@@ -35,6 +35,12 @@ const nextConfig: NextConfig = {
         port: "",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "alibi-s3.s3.amazonaws.com",
+        port: "",
+        pathname: "/**",
+      },
     ],
   },
   typescript: {

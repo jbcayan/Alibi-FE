@@ -24,8 +24,21 @@ export type UserPhotoEditRequestResponse = {
   uid: string; // UUID format
   description: string;
   special_note: string;
-  request_status: "pending" | "approved" | "rejected"; // assuming enum, adjust if needed
+  request_status: string; // API may return 'pending', 'completed', etc.
   desire_delivery_date: string; // ISO date string
+  files?: Array<{
+    file_type: string;
+    user_request_file: string;
+    file_status: string;
+    admin_response_file: string | null;
+  }>;
+};
+
+export type UserPhotoEditRequestsListResponse = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: UserPhotoEditRequestResponse[];
 };
 
 export interface UserVideoAudioEditRequest {
@@ -44,12 +57,27 @@ export interface UserVideoAudioEditRequest {
 
 export interface UserVideoAudioEditRequestResponse {
   uid: string;
-  title: string;
+  code: string;
   description: string;
   special_note?: string;
   request_status: string;
-  desire_delivery_date: string; // ISO 8601 string
+  request_type: string;
+  desire_delivery_date: string;
+  files?: Array<{
+    file_type: string;
+    user_request_file: string;
+    file_status: string;
+    admin_response_file: string | null;
+  }>;
+  created_at: string;
 }
+
+export type UserVideoAudioEditRequestsListResponse = {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: UserVideoAudioEditRequestResponse[];
+};
 
 // types for gallery=======================
 export interface GalleryItem {
@@ -74,7 +102,7 @@ export interface UserSouvenirRequestResponse {
   uid: string;
   description: string;
   special_note: string;
-  request_status: "pending" | "approved" | "rejected";
+  request_status: "pending" | "approved" | "rejected" | "new";
   desire_delivery_date: string;
   quantity: number;
   media_files: GalleryItem[];
