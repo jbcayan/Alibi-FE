@@ -41,47 +41,49 @@ const Profile = () => {
   }
 
   return (
-    <div className="min-h-screen main_gradient_bg flex items-center justify-center px-4 py-20">
-      <div className="glass-card p-8 rounded-lg shadow-lg w-full max-w-md text-white text-center">
-        {/* Profile Image */}
-        <div className="flex justify-center mb-6">
-          <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-300 hover:border-blue-400 transition-colors duration-300 bg-gray-100">
-            <Image
-              src="https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg"
-              alt="User Profile"
-              width={80}
-              height={80}
-              className="object-cover w-full h-full"
-              priority
-            />
+    <div className="min-h-screen main_gradient_bg px-4 py-6">
+      <div className="flex justify-center pt-8">
+        <div className="glass-card p-8 rounded-lg shadow-lg w-full max-w-md text-white text-center">
+          {/* Profile Image */}
+          <div className="flex justify-center mb-6">
+            <div className="w-20 h-20 rounded-full overflow-hidden border-2 border-gray-300 hover:border-blue-400 transition-colors duration-300 bg-gray-100">
+              <Image
+                src="https://static.vecteezy.com/system/resources/previews/009/292/244/non_2x/default-avatar-icon-of-social-media-user-vector.jpg"
+                alt="User Profile"
+                width={80}
+                height={80}
+                className="object-cover w-full h-full"
+                priority
+              />
+            </div>
           </div>
-        </div>
-        <h2 className="text-2xl font-semibold mb-4">プロフィール</h2>
+          <h2 className="text-2xl font-semibold mb-4">プロフィール</h2>
 
-        <div className="space-y-4 text-left">
-          <div className="flex items-center gap-2">
-            <Mail size={18} className="text-blue-400" />
-            <span className="text-sm text-gray-300">メールアドレス:</span>
+          <div className="space-y-4 text-left">
+            <div className="flex items-center gap-2">
+              <Mail size={18} className="text-blue-400" />
+              <span className="text-sm text-gray-300">メールアドレス:</span>
+            </div>
+            <p className="text-lg font-medium ml-6">{profile?.email}</p>
+
+            <div className="flex items-center gap-2 mt-4">
+              <User2 size={18} className="text-blue-400" />
+              <span className="text-sm text-gray-300">ユーザー種別:</span>
+            </div>
+            <p className="text-lg font-medium ml-6">
+              {profile?.kind === user_role.USER ? "END USER" : "SUPER ADMIN"}
+            </p>
           </div>
-          <p className="text-lg font-medium ml-6">{profile?.email}</p>
 
-          <div className="flex items-center gap-2 mt-4">
-            <User2 size={18} className="text-blue-400" />
-            <span className="text-sm text-gray-300">ユーザー種別:</span>
+          {/* Reset Password Button */}
+          <div className="mt-6 text-center">
+            <Link
+              href="/change-password"
+              className="inline-block glass text-white px-4 py-2 rounded transition duration-300"
+            >
+              パスワードを変更
+            </Link>
           </div>
-          <p className="text-lg font-medium ml-6">
-            {profile?.kind === user_role.USER ? "END USER" : "SUPER ADMIN"}
-          </p>
-        </div>
-
-        {/* Reset Password Button */}
-        <div className="mt-6 text-center">
-          <Link
-            href="/change-password"
-            className="inline-block glass text-white px-4 py-2 rounded transition duration-300"
-          >
-            パスワードを変更
-          </Link>
         </div>
       </div>
     </div>
