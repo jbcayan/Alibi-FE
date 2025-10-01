@@ -26,7 +26,7 @@ class UserAPIClient {
   private readonly apiUrl = baseUrl;
 
   private getHeaders(): HeadersInit {
-    const token = localStorage.getItem("accessToken"); // or from cookies
+    const token = localStorage.getItem("accessToken");
     return {
       "Content-Type": "application/json",
       Accept: "application/json",
@@ -368,6 +368,57 @@ class UserAPIClient {
       return await response.json();
     } catch (error) {
       console.error("OTP verification error:", error);
+      throw error;
+    }
+  }
+
+  public async createSouvenirOrder(orderData: {
+    media_files: { gallery_uid: string }[];
+    quantity: number;
+    description: string;
+    special_note?: string;
+    desire_delivery_date: string;
+    amount: number;
+  }): Promise<{ uid: string; code: string }> {
+    try {
+      const response = await fetch(`${this.apiUrl}/gallery/souvenir-requests`, {
+        method: "POST",
+        headers: this.getHeaders(),
+        body: JSON.stringify({
+          media_files: orderData.media_files, // Send as array of objects with gallery_uid
+          quantity: orderData.quantity,
+          description: orderData.description,
+          special_note: orderData.special_note,
+          desire_delivery_date: orderData.desire_delivery_date,
+          amount: orderData.amount,
+          payment_verified: false,
+          request_status: "new",
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[API] Souvenir order creation failed:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: errorData,
+          payload: {
+            media_files: orderData.media_files,
+            quantity: orderData.quantity,
+            description: orderData.description,
+            special_note: orderData.special_note,
+            desire_delivery_date: orderData.desire_delivery_date,
+            amount: orderData.amount,
+            payment_verified: false,
+            request_status: "new",
+          }
+        });
+        throw new Error(errorData.detail || "Failed to create souvenir order");
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Souvenir order creation error:", error);
       throw error;
     }
   }

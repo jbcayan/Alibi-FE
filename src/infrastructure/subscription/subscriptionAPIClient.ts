@@ -59,33 +59,38 @@ class SubscriptionAPIClient {
     return response.json();
   }
 
+  async createSubscriptionOrder(planId: string, period: string): Promise<{ id: string }> {
+    // Create the subscription order first
+    const response = await fetch(`${baseUrl}/payment/subscription-plans/${planId}/order`, {
+      method: "POST",
+      headers: this.getAuthHeaders(),
+      body: JSON.stringify({ period }),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to create subscription order");
+    }
+    return response.json();
+  }
+
   async createCheckoutSession(
     transaction_token_id: string,
     amount: number,
     period: string,
+    orderId: string,
     successUrl: string,
     cancelUrl: string
   ): Promise<CheckoutResponse> {
-    // Try different parameter names for the token
+    // Now process payment with correct metadata
     const requestBody = {
-      transaction_token_id, // Primary: what backend expects
-      token_id: transaction_token_id, // Fallback: alternative name
-      token: transaction_token_id, // Another fallback
+      transaction_token_id,
       amount,
       currency: "JPY",
-      period: period === "six_months" ? "semiannually" : period === "month" ? "monthly" : period, // Fix period mapping
-      metadata: {},
+      period: period === "six_months" ? "semiannually" : period === "month" ? "monthly" : period,
+      metadata: { order_id: orderId },
       three_ds: { mode: "normal" },
       success_url: successUrl,
       cancel_url: cancelUrl,
     };
-
-    console.log("🔍 [DEBUG] createCheckoutSession - Request body:", {
-      ...requestBody,
-      transaction_token_id: "***",
-      token_id: "***",
-      token: "***"
-    });
 
     const response = await fetch(`${baseUrl}/payment/univapay/subscription/`, {
       method: "POST",
@@ -93,17 +98,12 @@ class SubscriptionAPIClient {
       body: JSON.stringify(requestBody),
     });
 
-    console.log("🔍 [DEBUG] createCheckoutSession - Response status:", response.status);
-
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("🔍 [DEBUG] createCheckoutSession - Error response:", errorText);
       throw new Error(`Failed to create UnivaPay subscription session: ${response.status} ${response.statusText} - ${errorText}`);
     }
 
-    const data = await response.json();
-    console.log("🔍 [DEBUG] createCheckoutSession - Success response:", data);
-    return data;
+    return response.json();
   }
 
   async confirmSubscription(sessionId: string): Promise<ConfirmResponse> {

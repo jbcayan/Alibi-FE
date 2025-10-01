@@ -326,7 +326,6 @@ const AlibiSouvenir = () => {
       }
     }
     loadWidgetConfigAndScript();
-    // eslint-disable-next-line
   }, []);
 
   // Open UnivaPay widget and handle payment (robust, like subscription)
@@ -341,15 +340,32 @@ const AlibiSouvenir = () => {
     }
     setSubmitting(true);
     try {
-      // Wait for widget global
+      // 1. Create souvenir order first
+      if (!orderModal?.uid) {
+        throw new Error("Gallery item not selected");
+      }
+      const orderPayload = {
+        media_files: [{ gallery_uid: orderModal.uid }],
+        quantity: Number(orderData.quantity),
+        description: orderData.description,
+        special_note: orderData.special_note,
+        desire_delivery_date: orderData.desire_delivery_date,
+        amount: Number(orderData.amount),
+      };
+
+      console.log('[Souvenir] Creating order first:', orderPayload);
+      const order = await userApiClient.createSouvenirOrder(orderPayload);
+      if (!order?.uid) {
+        throw new Error("注文の作成に失敗しました (Failed to create order)");
+      }
+      console.log('[Souvenir] Order created with UID:', order.uid);
+
+      // 2. Wait for widget global
       const UnivapayGlobal = (window as any).Univapay || (window as any).UnivapayCheckout;
       console.log('[Souvenir] UnivapayGlobal available:', !!UnivapayGlobal);
       if (!UnivapayGlobal) throw new Error("UnivaPay widget not loaded");
-      const orderId = generateOrderId();
-      console.log('[Souvenir] Generated order ID:', orderId);
       console.log('[Souvenir] Raw orderData.amount:', orderData.amount);
       console.log('[Souvenir] Number(orderData.amount):', Number(orderData.amount));
-      console.log('[Souvenir] Type of orderData.amount:', typeof orderData.amount);
 
       // UnivaPay expects amount in sen (1 JPY = 100 sen)
       const amountInSen = Math.round(Number(orderData.amount) * 100);
@@ -368,8 +384,7 @@ const AlibiSouvenir = () => {
             cvvAuthorize: true,
             metadata: {
               kind: "one_time",
-              order_id: orderId,
-              gallery_uid: orderModal?.uid,
+              order_id: order.uid, // Use order UID instead of gallery UID
               description: orderData.description,
             },
             onSuccess: (result: any) => {
@@ -393,7 +408,7 @@ const AlibiSouvenir = () => {
         }
         setTimeout(() => reject(new Error("Timed out waiting for payment token")), 120000);
       });
-      // Call backend to create charge
+      // 3. Call backend to create charge with order ID in metadata
       const token = localStorage.getItem("accessToken");
       const payload = {
         transaction_token_id: tokenId, // Primary: what backend expects
@@ -402,8 +417,7 @@ const AlibiSouvenir = () => {
         amount: Number(orderData.amount), // Send amount in JPY (not sen) to backend
         currency: "JPY",
         metadata: {
-          order_id: orderId,
-          gallery_uid: orderModal?.uid,
+          order_id: order.code, // Use order code in metadata
           description: orderData.description,
         },
         three_ds: { mode: "normal" },
@@ -452,35 +466,27 @@ const AlibiSouvenir = () => {
         }
         throw new Error("Payment failed - check console for backend error details");
       }
-      // On success, create souvenir order
+      // 4. On success, check payment status and refresh the souvenir requests list
       const chargeData = await res.json();
-      const souvenirPayload = {
-        media_files: [{ gallery_uid: orderModal?.uid }],
-        quantity: Number(orderData.quantity),
-        description: orderData.description,
-        special_note: orderData.special_note,
-        desire_delivery_date: orderData.desire_delivery_date,
-        order_id: orderId,
-        amount: Number(orderData.amount), // Use original JPY amount for souvenir order
-        payment_verified: true,
-        request_status: "approved", // Set status to approved after successful payment
-      };
-      const souvenirRes = await fetch(`${baseUrl}/gallery/souvenir-requests`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: token ? `Bearer ${token}` : "",
-        },
-        body: JSON.stringify(souvenirPayload),
-      });
-      if (!souvenirRes.ok) {
-        const err = await souvenirRes.json();
-        throw new Error(err.detail || "Order creation failed after payment");
+      console.log('[Souvenir] Payment response:', chargeData);
+
+      // Check if payment was actually successful
+      if (chargeData.payment?.status === 'successful' || chargeData.payment?.is_successful === true) {
+        console.log('[Souvenir] Payment successful, refreshing requests list...');
+        await fetchSouvenirRequests();
+        toast.success("Payment successful! Your order has been placed.");
+        setOrderModal(null);
+        fetchSouvenirRequests();
+      } else if (chargeData.payment?.status === 'pending') {
+        console.log('[Souvenir] Payment is pending - may require additional authentication');
+        toast.info("Payment is being processed. Please check your order status.");
+        await fetchSouvenirRequests();
+        setOrderModal(null);
+        fetchSouvenirRequests();
+      } else {
+        console.error('[Souvenir] Payment failed or unknown status:', chargeData.payment?.status);
+        toast.error("Payment could not be completed. Please try again.");
       }
-      toast.success("Payment successful! Your order has been placed.");
-      setOrderModal(null);
-      fetchSouvenirRequests();
     } catch (err: any) {
       toast.error(err.message || "Payment failed");
     } finally {
