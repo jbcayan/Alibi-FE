@@ -8,7 +8,7 @@ import {
 import Cookies from "js-cookie";
 import { toast } from "react-toastify";
 
-export const useSubscriptionGuard = (redirectToPlans: boolean = true) => {
+export const useSubscriptionGuard = (redirectToPlans: boolean = true, allowUnauthenticated: boolean = false) => {
   const [subscriptionStatus, setSubscriptionStatus] =
     useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
@@ -26,9 +26,11 @@ export const useSubscriptionGuard = (redirectToPlans: boolean = true) => {
         console.log("🔍 [DEBUG] useSubscriptionGuard - Final token:", token ? "Present" : "Missing");
 
         if (!token) {
-          console.log("🔍 [DEBUG] useSubscriptionGuard - No token found, redirecting to login");
-          // User not logged in, redirect to login
-          router.push("/login");
+          console.log("🔍 [DEBUG] useSubscriptionGuard - No token found");
+          if (!allowUnauthenticated) {
+            console.log("🔍 [DEBUG] useSubscriptionGuard - Redirecting to login");
+            router.push("/login");
+          }
           return;
         }
 
@@ -98,7 +100,7 @@ export const useSubscriptionGuard = (redirectToPlans: boolean = true) => {
     };
 
     checkSubscription();
-  }, [router, redirectToPlans]);
+  }, [router, redirectToPlans, allowUnauthenticated]);
 
   const refreshSubscriptionStatus = async () => {
     try {

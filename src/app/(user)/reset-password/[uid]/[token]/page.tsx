@@ -8,7 +8,7 @@ import { userApiClient } from "@/infrastructure/user/userAPIClient";
 import { ToastContainer, toast } from "react-toastify";
 import Link from "next/link";
 import { Eye, EyeOff, Key, CheckCircle } from "lucide-react";
-import { useRouter } from "next/router";
+import { useParams, useRouter } from "next/navigation";
 
 // Zod validation schema
 const resetConfirmSchema = z
@@ -36,8 +36,10 @@ const ResetPasswordConfirmPage = () => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [resetComplete, setResetComplete] = useState(false);
   const [isValidLink, setIsValidLink] = useState(true);
+  const params = useParams();
   const router = useRouter();
-  const { uid, token } = router.query;
+  const uid = params?.uid as string;
+  const token = params?.token as string;
 
   const {
     register,
@@ -53,14 +55,14 @@ const ResetPasswordConfirmPage = () => {
 
   useEffect(() => {
     // Check if uid and token are present
-    if (router.isReady && (!uid || !token)) {
+    if (!uid || !token) {
       toast.error("無効なリセットリンクです", { position: "top-center" });
       setIsValidLink(false);
       setTimeout(() => {
         router.push("/reset-password");
       }, 2000);
     }
-  }, [router.isReady, uid, token, router]);
+  }, [uid, token, router]);
 
   const onSubmit: SubmitHandler<ResetConfirmFormData> = async (data) => {
     if (!uid || !token) {
@@ -200,8 +202,8 @@ const ResetPasswordConfirmPage = () => {
     );
   }
 
-  // Loading screen while router is not ready
-  if (!router.isReady) {
+  // Loading screen while params are not available
+  if (!params) {
     return (
       <div className="min-h-screen main_gradient_bg text-white">
         <main className="flex min-h-screen flex-col items-center justify-center px-4">

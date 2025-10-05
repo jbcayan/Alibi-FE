@@ -12,7 +12,8 @@ export function middleware(request: NextRequest) {
   }
 
   // Define route categories
-  const publicRoutes = ["/login", "/register", "/reset-password", "/privacy-policy", "/terms-of-service"];
+  const publicRoutes = ["/login", "/register", "/privacy-policy", "/terms-of-service"];
+  const authRoutes = ["/reset-password"]; // Routes that should be accessible to authenticated users
   const otpRoutes = ["/user/verify-otp"]; // OTP routes should be accessible during registration flow
   const adminRoutes = ["/admin"];
   const subscriptionRoutes = ["/subscription"];
@@ -34,6 +35,11 @@ export function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL("/", request.url));
       }
     }
+    return NextResponse.next();
+  }
+
+  // Handle auth routes (reset-password) - allow authenticated users to access
+  if (authRoutes.some((route) => pathname.startsWith(route))) {
     return NextResponse.next();
   }
 

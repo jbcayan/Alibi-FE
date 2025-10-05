@@ -36,13 +36,13 @@ const UserDashboardLayout = ({ children }: Props) => {
     "/terms-of-service",
   ];
 
-  const shouldHideUI = pathname ? hideUIRoutes.includes(pathname) : false;
-  const shouldExcludeSubscriptionGuard = pathname ? excludeSubscriptionGuardRoutes.includes(pathname) : false;
+  const shouldHideUI = pathname ? hideUIRoutes.some(route => pathname.startsWith(route)) : false;
+  const shouldExcludeSubscriptionGuard = pathname ? excludeSubscriptionGuardRoutes.some(route => pathname.startsWith(route)) : false;
 
   // Define routes where footer should be shown (only login page)
   const shouldShowFooter = pathname === "/login";
 
-  const { loading, hasActiveSubscription } = useSubscriptionGuard(!shouldExcludeSubscriptionGuard);
+  const { loading, hasActiveSubscription } = useSubscriptionGuard(!shouldExcludeSubscriptionGuard, shouldExcludeSubscriptionGuard);
 
   const handleMenuToggle = () => setSidebarOpen(!sidebarOpen);
   const handleSidebarClose = () => setSidebarOpen(false);
