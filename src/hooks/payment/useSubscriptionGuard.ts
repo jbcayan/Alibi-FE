@@ -6,6 +6,7 @@ import {
   SubscriptionStatus,
 } from "@/infrastructure/subscription/subscriptionAPIClient";
 import Cookies from "js-cookie";
+import { toast } from "react-toastify";
 
 export const useSubscriptionGuard = (redirectToPlans: boolean = true) => {
   const [subscriptionStatus, setSubscriptionStatus] =
@@ -64,9 +65,29 @@ export const useSubscriptionGuard = (redirectToPlans: boolean = true) => {
         console.error("🔍 [DEBUG] useSubscriptionGuard - Subscription check failed:", err);
         setError(`Failed to check subscription status: ${err.message}`);
 
-        // If API call fails, might be due to invalid token
-        // Clear tokens and redirect to login
-        console.log("🔍 [DEBUG] useSubscriptionGuard - Clearing tokens and redirecting to login");
+        // Check if it's a token expiration error
+        const errorMessage = err.message || '';
+        const isTokenExpired = errorMessage.includes('token_not_valid') ||
+                              errorMessage.includes('Token is expired') ||
+                              errorMessage.includes('401');
+
+        if (isTokenExpired) {
+          console.log("🔍 [DEBUG] useSubscriptionGuard - Token expired, clearing tokens and redirecting to login");
+          // Clear tokens and redirect to login
+          localStorage.removeItem("accessToken");
+          Cookies.remove("accessToken");
+          Cookies.remove("refreshToken");
+          Cookies.remove("role");
+
+          // Show user-friendly message
+          toast.error("セッションが期限切れです。再度ログインしてください。");
+
+          router.push("/login");
+          return;
+        }
+
+        // For other errors, still redirect to login but show different message
+        console.log("🔍 [DEBUG] useSubscriptionGuard - Other error, redirecting to login");
         localStorage.removeItem("accessToken");
         Cookies.remove("accessToken");
         Cookies.remove("refreshToken");

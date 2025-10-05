@@ -4,6 +4,8 @@ import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { baseUrl } from "@/constants/baseApi";
 import { adminBreadcrumbs } from "@/constants/route-breadcrumbs";
 import React, { useEffect, useState, FormEvent, ChangeEvent, FC } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 interface VideoRequest {
   uid: string;
@@ -25,12 +27,14 @@ const MainComponent: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
 
   useEffect(() => {
     fetchRequests();
-  }, [currentPage, selectedStatus]);
+  }, [currentPage, selectedStatus, startDate, endDate]);
 
   useEffect(() => {
     const handleVisibilityChange = () => {
@@ -52,7 +56,7 @@ const MainComponent: FC = () => {
       params.append("page", String(currentPage));
       if (searchTerm) params.append("search", searchTerm);
       if (selectedStatus && selectedStatus !== "all")
-        params.append("status", selectedStatus);
+        params.append("request_status", selectedStatus);
       const response = await fetch(
         ` ${baseUrl}/gallery/admin/video-audio-edit-requests?${params.toString()}`,
         {
@@ -65,8 +69,30 @@ const MainComponent: FC = () => {
       );
       if (!response.ok) throw new Error("依頼データの取得に失敗しました");
       const data = await response.json();
-      setRequests(data.results || data.requests || []);
-      setTotalPages(data.total_pages || data.totalPages || 1);
+
+      // Apply client-side date filtering
+      let filteredResults = data.results || data.requests || [];
+
+      if (startDate || endDate) {
+        filteredResults = filteredResults.filter((request: VideoRequest) => {
+          const createdDate = new Date(request.created_at);
+          const start = startDate ? new Date(startDate) : null;
+          const end = endDate ? new Date(endDate) : null;
+
+          // Set time to start/end of day for proper comparison
+          if (start) start.setHours(0, 0, 0, 0);
+          if (end) end.setHours(23, 59, 59, 999);
+
+          const afterStart = !start || createdDate >= start;
+          const beforeEnd = !end || createdDate <= end;
+
+          return afterStart && beforeEnd;
+        });
+      }
+
+      setRequests(filteredResults);
+      // Recalculate total pages based on filtered results
+      setTotalPages(Math.ceil(filteredResults.length / 10));
     } catch (err: any) {
       console.error(err);
       setError(err.message || "不明なエラーが発生しました");
@@ -79,6 +105,14 @@ const MainComponent: FC = () => {
     e.preventDefault();
     setCurrentPage(1);
     fetchRequests();
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedStatus("all");
+    setStartDate(null);
+    setEndDate(null);
+    setCurrentPage(1);
   };
 
   return (
@@ -99,33 +133,95 @@ const MainComponent: FC = () => {
         <div className="mb-6">
           <form
             onSubmit={handleSearch}
-            className="flex flex-col gap-4 sm:flex-row"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6"
           >
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setSearchTerm(e.target.value)
-              }
-              placeholder="依頼者名、依頼内容で検索..."
-              className="w-full rounded-lg border border-gray-300 px-4 py-2"
-            />
-            <select
-              value={selectedStatus}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                setSelectedStatus(e.target.value)
-              }
-              className="w-full sm:w-auto rounded-lg border border-gray-300 px-4 py-2"
-            >
-              <option value="all">全てのステータス</option>
-              <option value="pending">未着手</option>
-              <option value="in_progress">作業中</option>
-              <option value="completed">完了</option>
-              <option value="cancelled">キャンセル</option>
-            </select>
-            <Button className="lg:w-20 text-center" type="submit">
-              <h4 className="text-center w-full">検索</h4>
-            </Button>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">検索</label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setSearchTerm(e.target.value)
+                }
+                placeholder="依頼者名、依頼内容で検索..."
+                className="w-full rounded-lg border border-gray-300 px-4 py-2"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">ステータス</label>
+              <select
+                value={selectedStatus}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                  setSelectedStatus(e.target.value)
+                }
+                className="w-full rounded-lg border border-gray-300 px-4 py-2"
+              >
+                <option value="all">全てのステータス</option>
+                <option value="pending">未着手</option>
+                <option value="in_progress">作業中</option>
+                <option value="completed">完了</option>
+                <option value="cancelled">キャンセル</option>
+              </select>
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">開始日</label>
+              <div className="relative">
+                <DatePicker
+                  selected={startDate}
+                  onChange={(date: Date | null) => setStartDate(date)}
+                  dateFormat="yyyy-MM-dd"
+                  placeholderText="開始日を選択"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {startDate && (
+                  <button
+                    type="button"
+                    onClick={() => setStartDate(null)}
+                    className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600"
+                    title="開始日をクリア"
+                  >
+                    <i className="fas fa-times-circle"></i>
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">終了日</label>
+              <div className="relative">
+                <DatePicker
+                  selected={endDate}
+                  onChange={(date: Date | null) => setEndDate(date)}
+                  dateFormat="yyyy-MM-dd"
+                  placeholderText="終了日を選択"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {endDate && (
+                  <button
+                    type="button"
+                    onClick={() => setEndDate(null)}
+                    className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600"
+                    title="終了日をクリア"
+                  >
+                    <i className="fas fa-times-circle"></i>
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col justify-end">
+              <Button className="w-full text-center py-2" type="submit">
+                <h4 className="text-center w-full">検索</h4>
+              </Button>
+            </div>
+            <div className="flex flex-col justify-end">
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="w-full text-center py-2 px-4 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <i className="fas fa-times mr-1"></i>
+                クリア
+              </button>
+            </div>
           </form>
         </div>
 

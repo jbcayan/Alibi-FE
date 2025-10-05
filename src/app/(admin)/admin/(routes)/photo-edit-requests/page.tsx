@@ -1,5 +1,7 @@
 "use client";
 import React, { useEffect, useState, FormEvent, ChangeEvent } from "react";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import Button from "@/components/admin/ui/Button";
 import { baseUrl } from "@/constants/baseApi";
 import { getAuthHeaders } from "@/infrastructure/admin/utils/getAuthHeaders";
@@ -36,13 +38,15 @@ const MainComponent: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [showDownloadModal, setShowDownloadModal] = useState<boolean>(false);
 
   useEffect(() => {
     fetchRequests();
-  }, [currentPage, selectedStatus]);
+  }, [currentPage, selectedStatus, startDate, endDate]);
 
   const fetchRequests = async () => {
     try {
@@ -51,7 +55,10 @@ const MainComponent: React.FC = () => {
       url.searchParams.set("page", currentPage.toString());
       if (searchTerm) url.searchParams.set("search", searchTerm);
       if (selectedStatus !== "all")
-        url.searchParams.set("status", selectedStatus);
+        url.searchParams.set("request_status", selectedStatus);
+
+      console.log('API URL:', url.toString());
+      console.log('Filters:', { searchTerm, selectedStatus, startDate, endDate });
 
       const response = await fetch(url.toString(), {
         method: "GET",
@@ -61,8 +68,31 @@ const MainComponent: React.FC = () => {
       if (!response.ok) throw new Error("依頼データの取得に失敗しました");
 
       const data: PhotoEditResponse = await response.json();
-      setRequests(data.results || []);
-      setTotalPages(Math.ceil(data.count / 10));
+      console.log('API Response:', data);
+
+      // Apply client-side date filtering
+      let filteredResults = data.results || [];
+
+      if (startDate || endDate) {
+        filteredResults = filteredResults.filter((request) => {
+          const deliveryDate = new Date(request.desire_delivery_date);
+          const start = startDate ? new Date(startDate) : null;
+          const end = endDate ? new Date(endDate) : null;
+
+          // Set time to start/end of day for proper comparison
+          if (start) start.setHours(0, 0, 0, 0);
+          if (end) end.setHours(23, 59, 59, 999);
+
+          const afterStart = !start || deliveryDate >= start;
+          const beforeEnd = !end || deliveryDate <= end;
+
+          return afterStart && beforeEnd;
+        });
+      }
+
+      setRequests(filteredResults);
+      // Recalculate total pages based on filtered results
+      setTotalPages(Math.ceil(filteredResults.length / 10));
     } catch (err: any) {
       console.error(err);
       setError(err.message || "予期しないエラーが発生しました");
@@ -75,6 +105,14 @@ const MainComponent: React.FC = () => {
     e.preventDefault();
     setCurrentPage(1);
     fetchRequests();
+  };
+
+  const clearFilters = () => {
+    setSearchTerm("");
+    setSelectedStatus("all");
+    setStartDate(null);
+    setEndDate(null);
+    setCurrentPage(1);
   };
 
   return (
@@ -107,33 +145,95 @@ const MainComponent: React.FC = () => {
         <div className="mb-6">
           <form
             onSubmit={handleSearch}
-            className="flex flex-col gap-4 sm:flex-row"
+            className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-6"
           >
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setSearchTerm(e.target.value)
-              }
-              placeholder="依頼内容で検索..."
-              className="w-full rounded-lg border border-gray-300 px-4 py-2"
-            />
-            <select
-              value={selectedStatus}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                setSelectedStatus(e.target.value)
-              }
-              className="w-full sm:w-auto rounded-lg border border-gray-300 px-4 py-2"
-            >
-              <option value="all">全てのステータス</option>
-              <option value="pending">未着手</option>
-              <option value="in_progress">作業中</option>
-              <option value="completed">完了</option>
-              <option value="cancelled">キャンセル</option>
-            </select>
-            <Button className="lg:w-20 text-center" type="submit">
-              <h4 className="text-center w-full">検索</h4>
-            </Button>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">検索</label>
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                  setSearchTerm(e.target.value)
+                }
+                placeholder="依頼内容で検索..."
+                className="w-full rounded-lg border border-gray-300 px-4 py-2"
+              />
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">ステータス</label>
+              <select
+                value={selectedStatus}
+                onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                  setSelectedStatus(e.target.value)
+                }
+                className="w-full rounded-lg border border-gray-300 px-4 py-2"
+              >
+                <option value="all">全てのステータス</option>
+                <option value="pending">未着手</option>
+                <option value="in_progress">作業中</option>
+                <option value="completed">完了</option>
+                <option value="cancelled">キャンセル</option>
+              </select>
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">開始日</label>
+              <div className="relative">
+                <DatePicker
+                  selected={startDate}
+                  onChange={(date: Date | null) => setStartDate(date)}
+                  dateFormat="yyyy-MM-dd"
+                  placeholderText="開始日を選択"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {startDate && (
+                  <button
+                    type="button"
+                    onClick={() => setStartDate(null)}
+                    className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600"
+                    title="開始日をクリア"
+                  >
+                    <i className="fas fa-times-circle"></i>
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <label className="text-sm font-medium text-gray-700 mb-1">終了日</label>
+              <div className="relative">
+                <DatePicker
+                  selected={endDate}
+                  onChange={(date: Date | null) => setEndDate(date)}
+                  dateFormat="yyyy-MM-dd"
+                  placeholderText="終了日を選択"
+                  className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+                {endDate && (
+                  <button
+                    type="button"
+                    onClick={() => setEndDate(null)}
+                    className="absolute inset-y-0 right-2 flex items-center text-gray-400 hover:text-gray-600"
+                    title="終了日をクリア"
+                  >
+                    <i className="fas fa-times-circle"></i>
+                  </button>
+                )}
+              </div>
+            </div>
+            <div className="flex flex-col justify-end">
+              <Button className="w-full text-center py-2" type="submit">
+                <h4 className="text-center w-full">検索</h4>
+              </Button>
+            </div>
+            <div className="flex flex-col justify-end">
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="w-full text-center py-2 px-4 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                <i className="fas fa-times mr-1"></i>
+                クリア
+              </button>
+            </div>
           </form>
         </div>
 

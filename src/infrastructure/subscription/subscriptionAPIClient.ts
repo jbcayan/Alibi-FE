@@ -59,34 +59,21 @@ class SubscriptionAPIClient {
     return response.json();
   }
 
-  async createSubscriptionOrder(planId: string, period: string): Promise<{ id: string }> {
-    // Create the subscription order first
-    const response = await fetch(`${baseUrl}/payment/subscription-plans/${planId}/order`, {
-      method: "POST",
-      headers: this.getAuthHeaders(),
-      body: JSON.stringify({ period }),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to create subscription order");
-    }
-    return response.json();
-  }
-
   async createCheckoutSession(
     transaction_token_id: string,
     amount: number,
     period: string,
-    orderId: string,
+    planId: string,
     successUrl: string,
     cancelUrl: string
   ): Promise<CheckoutResponse> {
-    // Now process payment with correct metadata
+    // Process payment with correct metadata
     const requestBody = {
       transaction_token_id,
       amount,
       currency: "JPY",
       period: period === "six_months" ? "semiannually" : period === "month" ? "monthly" : period,
-      metadata: { order_id: orderId },
+      metadata: { plan_id: planId },
       three_ds: { mode: "normal" },
       success_url: successUrl,
       cancel_url: cancelUrl,

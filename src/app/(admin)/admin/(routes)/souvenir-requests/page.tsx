@@ -3,6 +3,8 @@ import Button from "@/components/admin/ui/Button";
 import React, { useEffect, useState, FormEvent, ChangeEvent, FC } from "react";
 import Link from "next/link";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 import { baseUrl } from "@/constants/baseApi";
 
 // Interfaces
@@ -38,13 +40,15 @@ const MainComponent: FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [startDate, setStartDate] = useState<Date | null>(null);
+  const [endDate, setEndDate] = useState<Date | null>(null);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalPages, setTotalPages] = useState<number>(1);
   const [totalCount, setTotalCount] = useState<number>(0);
 
   useEffect(() => {
     fetchRequests();
-  }, [currentPage, selectedStatus]);
+  }, [currentPage, selectedStatus, startDate, endDate]);
 
   const fetchRequests = async () => {
     try {
@@ -57,13 +61,27 @@ const MainComponent: FC = () => {
           : null;
 
       const params = new URLSearchParams();
+
+      // If any filters are applied, fetch all data for client-side filtering
+      const hasFilters = searchTerm.trim() || (selectedStatus && selectedStatus !== "all") || startDate || endDate;
+
       if (searchTerm.trim()) params.append("search", searchTerm.trim());
       if (selectedStatus && selectedStatus !== "all")
-        params.append("status", selectedStatus);
-      params.append("page", currentPage.toString());
-      params.append("limit", "12");
+        params.append("request_status", selectedStatus);
+
+      // If filters are applied, fetch all data, otherwise use pagination
+      if (!hasFilters) {
+        params.append("page", currentPage.toString());
+        params.append("limit", "12");
+      } else {
+        // Fetch all data for filtering
+        params.append("limit", "1000"); // Large limit to get all data
+      }
 
       const url = `${baseUrl}/gallery/admin/souvenir-requests?${params.toString()}`;
+
+      console.log("Fetching URL:", url);
+      console.log("Filters:", { searchTerm, selectedStatus, startDate, endDate });
 
       const response = await fetch(url, {
         method: "GET",
@@ -78,13 +96,84 @@ const MainComponent: FC = () => {
       }
 
       const data = await response.json();
-      setRequests(data.results || data.data || data);
-      setTotalCount(
-        data.count || data.total || (Array.isArray(data) ? data.length : 0)
-      );
-      setTotalPages(
-        data.totalPages || Math.ceil((data.count || data.total || 0) / 12)
-      );
+      let filteredData = data.results || data.data || data;
+
+      console.log("Raw data received:", filteredData.length, "items");
+
+      // Apply client-side date filtering
+      if (startDate || endDate) {
+        console.log("Applying date filters:", { startDate, endDate });
+        filteredData = filteredData.filter((request: SouvenirRequest) => {
+          const requestDateStr = request.desire_delivery_date;
+          console.log("Request date string:", requestDateStr);
+
+          // Parse the date string - handle different formats
+          let requestDate: Date;
+          try {
+            // Try parsing as ISO string first
+            if (requestDateStr.includes('T')) {
+              requestDate = new Date(requestDateStr);
+            } else {
+              // Assume YYYY-MM-DD format
+              requestDate = new Date(requestDateStr + 'T00:00:00');
+            }
+
+            // Check if date is valid
+            if (isNaN(requestDate.getTime())) {
+              console.warn("Invalid date:", requestDateStr);
+              return false;
+            }
+
+            console.log("Parsed request date:", requestDate);
+
+            // Compare dates (ignore time)
+            const requestDateOnly = new Date(requestDate.getFullYear(), requestDate.getMonth(), requestDate.getDate());
+            const startDateOnly = startDate ? new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate()) : null;
+            const endDateOnly = endDate ? new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate()) : null;
+
+            if (startDateOnly && requestDateOnly < startDateOnly) {
+              console.log("Filtered out - before start date");
+              return false;
+            }
+            if (endDateOnly && requestDateOnly > endDateOnly) {
+              console.log("Filtered out - after end date");
+              return false;
+            }
+            console.log("Date passed filter");
+            return true;
+          } catch (error) {
+            console.error("Date parsing error:", error, requestDateStr);
+            return false;
+          }
+        });
+      }
+
+      console.log("Filtered data:", filteredData.length, "items");
+
+      // Apply client-side pagination if no filters
+      let paginatedData = filteredData;
+      const totalFilteredCount = filteredData.length;
+
+      if (!hasFilters) {
+        // No filters, use server pagination
+        setRequests(filteredData);
+        setTotalCount(
+          data.count || data.total || (Array.isArray(data) ? data.length : 0)
+        );
+        setTotalPages(
+          data.totalPages || Math.ceil((data.count || data.total || 0) / 12)
+        );
+      } else {
+        // Filters applied, paginate client-side
+        const startIndex = (currentPage - 1) * 12;
+        const endIndex = startIndex + 12;
+        paginatedData = filteredData.slice(startIndex, endIndex);
+
+        setRequests(paginatedData);
+        setTotalCount(totalFilteredCount);
+        setTotalPages(Math.ceil(totalFilteredCount / 12));
+      }
+
     } catch (error: any) {
       console.error("Fetch error:", error);
       setError(error.message || "依頼データの取得に失敗しました");
@@ -206,6 +295,8 @@ const MainComponent: FC = () => {
   const clearFilters = () => {
     setSearchTerm("");
     setSelectedStatus("all");
+    setStartDate(null);
+    setEndDate(null);
     setCurrentPage(1);
   };
 
@@ -326,7 +417,7 @@ const MainComponent: FC = () => {
         {/* Search and Filters */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
           <form onSubmit={handleSearch} className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-6 gap-4">
               <div className="lg:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   検索
@@ -364,7 +455,61 @@ const MainComponent: FC = () => {
                   <option value="cancelled">キャンセル</option>
                 </select>
               </div>
-              <div className="flex items-end space-x-2">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  開始日
+                </label>
+                <div className="relative">
+                  <DatePicker
+                    selected={startDate}
+                    onChange={(date) => setStartDate(date)}
+                    dateFormat="yyyy/MM/dd"
+                    placeholderText="選択してください"
+                    className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <i className="fas fa-calendar text-gray-400"></i>
+                  </div>
+                  {startDate && (
+                    <button
+                      type="button"
+                      onClick={() => setStartDate(null)}
+                      className="absolute inset-y-0 right-8 pr-1 flex items-center text-gray-400 hover:text-gray-600"
+                      title="開始日をクリア"
+                    >
+                      <i className="fas fa-times-circle"></i>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  終了日
+                </label>
+                <div className="relative">
+                  <DatePicker
+                    selected={endDate}
+                    onChange={(date) => setEndDate(date)}
+                    dateFormat="yyyy/MM/dd"
+                    placeholderText="選択してください"
+                    className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer"
+                  />
+                  <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <i className="fas fa-calendar text-gray-400"></i>
+                  </div>
+                  {endDate && (
+                    <button
+                      type="button"
+                      onClick={() => setEndDate(null)}
+                      className="absolute inset-y-0 right-8 pr-1 flex items-center text-gray-400 hover:text-gray-600"
+                      title="終了日をクリア"
+                    >
+                      <i className="fas fa-times-circle"></i>
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-end space-x-2 lg:col-span-2">
                 <Button type="submit" className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md">
                   <i className="fas fa-search mr-2"></i>
                   検索
@@ -374,7 +519,8 @@ const MainComponent: FC = () => {
                   onClick={clearFilters}
                   className="px-4 py-3 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
-                  <i className="fas fa-times"></i>
+                  <i className="fas fa-times mr-1"></i>
+                  クリア
                 </button>
               </div>
             </div>
@@ -670,7 +816,7 @@ const MainComponent: FC = () => {
                 <p className="text-gray-600 mb-6">
                   指定された条件に一致するお土産依頼はありません
                 </p>
-                {(searchTerm || selectedStatus !== "all") && (
+                {(searchTerm || selectedStatus !== "all" || startDate || endDate) && (
                   <button
                     onClick={clearFilters}
                     className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium rounded-lg transition-colors"

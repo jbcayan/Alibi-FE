@@ -16,7 +16,7 @@ const SubscriptionPlansPage = () => {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [subscribing, setSubscribing] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const { hasActiveSubscription, loading: guardLoading } = useSubscriptionGuard(false);
+  const { hasActiveSubscription, loading: guardLoading, error: guardError } = useSubscriptionGuard(false);
   const router = useRouter();
 
   // Redirect to dashboard if already subscribed
@@ -147,14 +147,9 @@ const SubscriptionPlansPage = () => {
 
     setSubscribing(plan.uid);
     try {
-      // 1. Create subscription order first
       const backendPeriod = (plan as any).original_period || plan.billing_interval;
-      const order = await subscriptionApiClient.createSubscriptionOrder(plan.uid, backendPeriod);
-      if (!order?.id) {
-        throw new Error("注文の作成に失敗しました (Failed to create order)");
-      }
 
-      // 2. Fetch widget config
+      // 1. Fetch widget config
       const widgetConfigRes = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL || "https://prod-be.examplesite.jp"}/payment/widget-config/`, {
         headers: { Authorization: `Bearer ${localStorage.getItem("accessToken")}` },
       });
@@ -166,10 +161,10 @@ const SubscriptionPlansPage = () => {
         throw new Error("Incomplete widget configuration received");
       }
 
-      // 3. Load UnivaPay script
+      // 2. Load UnivaPay script
       await loadUnivapayScript(widgetConfig.widget_url);
 
-      // 4. Open widget and get transaction token
+      // 3. Open widget and get transaction token
       const openWidgetAndGetToken = (): Promise<string> => {
         return new Promise((resolve, reject) => {
           const UnivapayGlobal = (window as any).Univapay || (window as any).UnivapayCheckout;
@@ -193,7 +188,7 @@ const SubscriptionPlansPage = () => {
                 interval: backendPeriod === "monthly" ? "month" : backendPeriod === "semiannually" ? "month" : backendPeriod,
                 interval_count: backendPeriod === "semiannually" ? 6 : 1,
                 period: backendPeriod,
-                metadata: { order_id: order.id, planName: plan.name },
+                metadata: { plan_id: plan.uid, planName: plan.name },
                 onSuccess: (result: any) => {
                   const tokenId = result.tokenId || result.transactionTokenId || result.transaction_token_id || result.id;
                   if (!tokenId) {
@@ -218,7 +213,7 @@ const SubscriptionPlansPage = () => {
                 interval: backendPeriod === "monthly" ? "month" : backendPeriod === "semiannually" ? "month" : backendPeriod,
                 interval_count: backendPeriod === "semiannually" ? 6 : 1,
                 period: backendPeriod,
-                metadata: { order_id: order.id, planName: plan.name },
+                metadata: { plan_id: plan.uid, planName: plan.name },
                 onSuccess: (result: any) => {
                   const tokenId = result.tokenId || result.transactionTokenId || result.transaction_token_id || result.id;
                   if (!tokenId) {
@@ -254,7 +249,7 @@ const SubscriptionPlansPage = () => {
                 interval: backendPeriod === "monthly" ? "month" : backendPeriod === "semiannually" ? "month" : backendPeriod,
                 interval_count: backendPeriod === "semiannually" ? 6 : 1,
                 period: backendPeriod,
-                metadata: { order_id: order.id, planName: plan.name },
+                metadata: { plan_id: plan.uid, planName: plan.name },
                 onSuccess: (result: any) => {
                   const tokenId = result.tokenId || result.transactionTokenId || result.transaction_token_id || result.id;
                   if (!tokenId) {
@@ -281,7 +276,7 @@ const SubscriptionPlansPage = () => {
                 interval: backendPeriod === "monthly" ? "month" : backendPeriod === "semiannually" ? "month" : backendPeriod,
                 interval_count: backendPeriod === "semiannually" ? 6 : 1,
                 period: backendPeriod,
-                metadata: { order_id: order.id, planName: plan.name },
+                metadata: { plan_id: plan.uid, planName: plan.name },
                 onSuccess: (result: any) => {
                   const tokenId = result.tokenId || result.transactionTokenId || result.transaction_token_id || result.id;
                   if (!tokenId) {
@@ -310,14 +305,14 @@ const SubscriptionPlansPage = () => {
         throw new Error("No transaction_token_id provided");
       }
 
-      // 5. Call backend with correct token, amount, period, and orderId
+      // 4. Call backend with correct token, amount, period, and planId
       const successUrl = `${window.location.origin}/subscription-success`;
       const cancelUrl = `${window.location.origin}/subscription-plans`;
       const response = await subscriptionApiClient.createCheckoutSession(
         transaction_token_id,
         plan.amount_jpy,
         backendPeriod,
-        order.code,
+        plan.uid,
         successUrl,
         cancelUrl
       );
@@ -339,11 +334,22 @@ const SubscriptionPlansPage = () => {
   };
 
   return (
-    <div>
-      {loading ? (
+    <div className="min-h-screen main_gradient_bg text-white">
+      {loading || guardLoading ? (
         <div className="flex items-center justify-center min-h-screen">
           <Loader2 className="animate-spin text-white" size={24} />
           <span className="ml-2">プランを読み込み中...</span>
+        </div>
+      ) : guardError ? (
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <div className="text-red-400 mb-4">
+              <i className="fas fa-exclamation-triangle text-4xl"></i>
+            </div>
+            <h2 className="text-xl text-white font-bold mb-2">認証エラー</h2>
+            <p className="text-gray-300 mb-4">ログインが必要です</p>
+            <p className="text-sm text-gray-400">ログインページに移動します...</p>
+          </div>
         </div>
       ) : hasActiveSubscription ? (
         <div className="flex items-center justify-center min-h-screen">
