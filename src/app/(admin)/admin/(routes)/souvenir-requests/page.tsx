@@ -20,6 +20,15 @@ interface SouvenirRequest {
     file_status: string;
     quantity: number;
   }>;
+  payment_details: {
+    user: string;
+    payment_type: string;
+    amount: number;
+    currency: string;
+    status: string;
+    created_at: string;
+    is_paid: boolean;
+  } | null;
 }
 
 const MainComponent: FC = () => {
@@ -112,6 +121,44 @@ const MainComponent: FC = () => {
         {config.label}
       </span>
     );
+  };
+
+  const getPaymentStatusBadge = (paymentDetails: SouvenirRequest['payment_details']) => {
+    if (!paymentDetails) {
+      return (
+        <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800">
+          未払い
+        </span>
+      );
+    }
+
+    const { status, is_paid } = paymentDetails;
+    const statusConfig = {
+      pending: { label: "処理中", color: "bg-yellow-100 text-yellow-800" },
+      successful: { label: "支払済", color: "bg-green-100 text-green-800" },
+      failed: { label: "失敗", color: "bg-red-100 text-red-800" },
+      cancelled: { label: "キャンセル", color: "bg-gray-100 text-gray-800" },
+    };
+
+    const config = statusConfig[status as keyof typeof statusConfig] || {
+      label: status,
+      color: "bg-gray-100 text-gray-800",
+    };
+
+    return (
+      <span
+        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${config.color}`}
+      >
+        {config.label}
+      </span>
+    );
+  };
+
+  const formatCurrency = (amount: number, currency: string) => {
+    if (currency === 'JPY') {
+      return `¥${amount.toLocaleString()}`;
+    }
+    return `${currency} ${amount.toLocaleString()}`;
   };
 
   const clearFilters = () => {
@@ -246,6 +293,12 @@ const MainComponent: FC = () => {
                     ステータス
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
+                    支払金額
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
+                    支払状況
+                  </th>
+                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
                     依頼日時
                   </th>
                   <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
@@ -269,23 +322,32 @@ const MainComponent: FC = () => {
                       {getStatusBadge(request.request_status)}
                     </td>
                     <td className="px-4 py-4 text-sm text-gray-600">
+                      {request.payment_details ? 
+                        formatCurrency(request.payment_details.amount, request.payment_details.currency) 
+                        : "未設定"
+                      }
+                    </td>
+                    <td className="px-4 py-4 text-sm">
+                      {getPaymentStatusBadge(request.payment_details)}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-gray-600">
                       {new Date(request.created_at).toLocaleString("ja-JP")}
                     </td>
                     <td className="px-4 py-4 text-sm">
-                      <button
-                        disabled
-                        className="text-gray-400 cursor-not-allowed font-medium"
+                      <Link
+                        href={`/admin/souvenir-requests/${request.uid}`}
+                        className="text-[#357AFF] hover:text-[#2E69DE] font-medium hover:underline"
                       >
                         <i className="fa-regular fa-eye mr-1"></i>
                         詳細
-                      </button>
+                      </Link>
                     </td>
                   </tr>
                 ))}
                 {requests.length === 0 && !loading && (
                   <tr>
                     <td
-                      colSpan={6}
+                      colSpan={8}
                       className="px-4 py-12 text-center text-sm text-gray-500"
                     >
                       <div className="flex flex-col items-center gap-2">
