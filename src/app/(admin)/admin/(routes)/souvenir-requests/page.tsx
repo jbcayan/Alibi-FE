@@ -49,9 +49,8 @@ const MainComponent: FC = () => {
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      setError(null); // Clear previous errors
+      setError(null);
 
-      // Get access token from localStorage
       const accessToken =
         typeof window !== "undefined"
           ? localStorage.getItem("accessToken")
@@ -62,7 +61,7 @@ const MainComponent: FC = () => {
       if (selectedStatus && selectedStatus !== "all")
         params.append("status", selectedStatus);
       params.append("page", currentPage.toString());
-      params.append("limit", "10"); // Add pagination limit
+      params.append("limit", "12");
 
       const url = `${baseUrl}/gallery/admin/souvenir-requests?${params.toString()}`;
 
@@ -79,17 +78,17 @@ const MainComponent: FC = () => {
       }
 
       const data = await response.json();
-      setRequests(data.results || data.data || data); // Handle different response structures
+      setRequests(data.results || data.data || data);
       setTotalCount(
         data.count || data.total || (Array.isArray(data) ? data.length : 0)
       );
       setTotalPages(
-        data.totalPages || Math.ceil((data.count || data.total || 0) / 10)
+        data.totalPages || Math.ceil((data.count || data.total || 0) / 12)
       );
     } catch (error: any) {
       console.error("Fetch error:", error);
       setError(error.message || "依頼データの取得に失敗しました");
-      setRequests([]); // Clear requests on error
+      setRequests([]);
     } finally {
       setLoading(false);
     }
@@ -97,61 +96,104 @@ const MainComponent: FC = () => {
 
   const handleSearch = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setCurrentPage(1); // Reset to first page when searching
+    setCurrentPage(1);
     fetchRequests();
   };
 
-  const getStatusBadge = (status: string) => {
-    const statusConfig = {
-      pending: { label: "未着手", color: "bg-yellow-100 text-yellow-800" },
-      in_progress: { label: "作業中", color: "bg-blue-100 text-blue-800" },
-      completed: { label: "完了", color: "bg-green-100 text-green-800" },
-      cancelled: { label: "キャンセル", color: "bg-red-100 text-red-800" },
+  const getStatusConfig = (status: string) => {
+    const configs = {
+      pending: {
+        label: "未着手",
+        color: "from-amber-400 to-orange-500",
+        bgColor: "bg-amber-50",
+        textColor: "text-amber-700",
+        icon: "fa-clock",
+        description: "処理待ち"
+      },
+      in_progress: {
+        label: "作業中",
+        color: "from-blue-400 to-indigo-500",
+        bgColor: "bg-blue-50",
+        textColor: "text-blue-700",
+        icon: "fa-cog",
+        description: "進行中"
+      },
+      completed: {
+        label: "完了",
+        color: "from-emerald-400 to-green-500",
+        bgColor: "bg-emerald-50",
+        textColor: "text-emerald-700",
+        icon: "fa-check-circle",
+        description: "完了済み"
+      },
+      cancelled: {
+        label: "キャンセル",
+        color: "from-red-400 to-rose-500",
+        bgColor: "bg-red-50",
+        textColor: "text-red-700",
+        icon: "fa-times-circle",
+        description: "キャンセル"
+      },
     };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || {
+    return configs[status as keyof typeof configs] || {
       label: status,
-      color: "bg-gray-100 text-gray-800",
+      color: "from-gray-400 to-gray-500",
+      bgColor: "bg-gray-50",
+      textColor: "text-gray-700",
+      icon: "fa-question-circle",
+      description: "不明"
     };
-
-    return (
-      <span
-        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${config.color}`}
-      >
-        {config.label}
-      </span>
-    );
   };
 
-  const getPaymentStatusBadge = (paymentDetails: SouvenirRequest['payment_details']) => {
+  const getPaymentStatusConfig = (paymentDetails: SouvenirRequest['payment_details']) => {
     if (!paymentDetails) {
-      return (
-        <span className="inline-flex rounded-full px-2 py-1 text-xs font-semibold bg-gray-100 text-gray-800">
-          未払い
-        </span>
-      );
+      return {
+        label: "未払い",
+        color: "from-gray-400 to-gray-500",
+        bgColor: "bg-gray-50",
+        textColor: "text-gray-700",
+        icon: "fa-exclamation-triangle"
+      };
     }
 
     const { status, is_paid } = paymentDetails;
-    const statusConfig = {
-      pending: { label: "処理中", color: "bg-yellow-100 text-yellow-800" },
-      successful: { label: "支払済", color: "bg-green-100 text-green-800" },
-      failed: { label: "失敗", color: "bg-red-100 text-red-800" },
-      cancelled: { label: "キャンセル", color: "bg-gray-100 text-gray-800" },
+    const configs = {
+      pending: {
+        label: "処理中",
+        color: "from-amber-400 to-orange-500",
+        bgColor: "bg-amber-50",
+        textColor: "text-amber-700",
+        icon: "fa-clock"
+      },
+      successful: {
+        label: "支払済",
+        color: "from-emerald-400 to-green-500",
+        bgColor: "bg-emerald-50",
+        textColor: "text-emerald-700",
+        icon: "fa-check-circle"
+      },
+      failed: {
+        label: "失敗",
+        color: "from-red-400 to-rose-500",
+        bgColor: "bg-red-50",
+        textColor: "text-red-700",
+        icon: "fa-times-circle"
+      },
+      cancelled: {
+        label: "キャンセル",
+        color: "from-gray-400 to-gray-500",
+        bgColor: "bg-gray-50",
+        textColor: "text-gray-700",
+        icon: "fa-ban"
+      },
     };
-
-    const config = statusConfig[status as keyof typeof statusConfig] || {
+    return configs[status as keyof typeof configs] || {
       label: status,
-      color: "bg-gray-100 text-gray-800",
+      color: "from-gray-400 to-gray-500",
+      bgColor: "bg-gray-50",
+      textColor: "text-gray-700",
+      icon: "fa-question-circle"
     };
-
-    return (
-      <span
-        className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ${config.color}`}
-      >
-        {config.label}
-      </span>
-    );
   };
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -166,285 +208,605 @@ const MainComponent: FC = () => {
     setSelectedStatus("all");
     setCurrentPage(1);
   };
-  // console.log({ requests });
-  return (
-    <div className="flex min-h-screen  flex-col bg-white lg:p-4">
-      <div className="mb-8">
-        <Breadcrumbs
-          items={[{ label: "お土産依頼", href: "/admin/souvenir-requests" }]}
-          homeHref="/admin"
-        />
-      </div>
-      <header className="border-b border-gray-200 bg-white px-4 py-4 sm:px-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-lg font-semibold text-gray-800 sm:text-2xl">
-            アリバイお土産依頼管理
-          </h1>
-          <div className="text-sm text-gray-600">総件数: {totalCount}件</div>
-        </div>
-      </header>
 
-      <main className="flex-1 px-4 py-6 sm:px-6">
-        <div className="mb-6">
-          <form
-            onSubmit={handleSearch}
-            className="flex flex-col gap-4 sm:flex-row"
-          >
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e: ChangeEvent<HTMLInputElement>) =>
-                setSearchTerm(e.target.value)
-              }
-              placeholder="依頼者名、依頼内容で検索..."
-              className="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-[#357AFF] focus:outline-none focus:ring-1 focus:ring-[#357AFF]"
+  const getPaymentStats = () => {
+    const stats = {
+      total: requests.length,
+      paid: requests.filter(r => r.payment_details?.is_paid === true).length,
+      pending: requests.filter(r => r.payment_details?.status === 'pending').length,
+      failed: requests.filter(r => r.payment_details?.status === 'failed').length,
+      unpaid: requests.filter(r => !r.payment_details || r.payment_details.is_paid === false).length,
+    };
+    return stats;
+  };
+
+  const paymentStats = getPaymentStats();
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      {/* Premium Header */}
+      <div className="bg-white shadow-lg border-b border-slate-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="py-6">
+            <Breadcrumbs
+              items={[{ label: "お土産依頼", href: "/admin/souvenir-requests" }]}
+              homeHref="/admin"
             />
-            <select
-              value={selectedStatus}
-              onChange={(e: ChangeEvent<HTMLSelectElement>) =>
-                setSelectedStatus(e.target.value)
-              }
-              className="w-full sm:w-auto rounded-lg border cursor-pointer border-gray-300 px-4 py-2 focus:border-[#357AFF] focus:outline-none focus:ring-1 focus:ring-[#357AFF]"
-            >
-              <option className="cursor-pointer" value="all">
-                全てのステータス
-              </option>
-              <option className="cursor-pointer" value="pending">
-                未着手
-              </option>
-              <option className="cursor-pointer" value="in_progress">
-                作業中
-              </option>
-              <option className="cursor-pointer" value="completed">
-                完了
-              </option>
-              <option className="cursor-pointer" value="cancelled">
-                キャンセル
-              </option>
-            </select>
-            <div className="flex gap-2">
-              <Button type="submit" className="lg:w-20 cursor-pointer">
-                <h4 className="text-center w-full">検索</h4>
-              </Button>
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="px-4 py-2 text-sm text-gray-600 cursor-pointer hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50"
-              >
-                クリア
-              </button>
+            <div className="mt-4 flex flex-col lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex items-center space-x-4">
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <i className="fas fa-gift text-white text-xl"></i>
+                  </div>
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900 sm:text-3xl">
+                    アリバイお土産依頼管理
+                  </h1>
+                  <p className="mt-1 text-sm text-gray-600">
+                    お客様からの特別なお土産依頼を効率的に管理
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 lg:mt-0 flex items-center space-x-4">
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-2 rounded-lg border border-blue-200">
+                  <div className="text-sm text-blue-700 font-medium">
+                    総依頼数
+                  </div>
+                  <div className="text-2xl font-bold text-blue-900">
+                    {totalCount.toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">総数</p>
+                <p className="text-2xl font-bold text-gray-900">{paymentStats.total}</p>
+              </div>
+              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                <i className="fas fa-list text-gray-600"></i>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-emerald-600">支払済</p>
+                <p className="text-2xl font-bold text-emerald-700">{paymentStats.paid}</p>
+              </div>
+              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <i className="fas fa-check-circle text-emerald-600"></i>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-amber-600">支払待ち</p>
+                <p className="text-2xl font-bold text-amber-700">{paymentStats.pending}</p>
+              </div>
+              <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                <i className="fas fa-clock text-amber-600"></i>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-red-600">支払失敗</p>
+                <p className="text-2xl font-bold text-red-700">{paymentStats.failed}</p>
+              </div>
+              <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+                <i className="fas fa-times-circle text-red-600"></i>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 hover:shadow-md transition-shadow">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">未払い</p>
+                <p className="text-2xl font-bold text-gray-700">{paymentStats.unpaid}</p>
+              </div>
+              <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                <i className="fas fa-exclamation-triangle text-gray-600"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Search and Filters */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <form onSubmit={handleSearch} className="space-y-4">
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+              <div className="lg:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  検索
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i className="fas fa-search text-gray-400"></i>
+                  </div>
+                  <input
+                    type="text"
+                    value={searchTerm}
+                    onChange={(e: ChangeEvent<HTMLInputElement>) =>
+                      setSearchTerm(e.target.value)
+                    }
+                    placeholder="依頼者名、依頼内容で検索..."
+                    className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ステータス
+                </label>
+                <select
+                  value={selectedStatus}
+                  onChange={(e: ChangeEvent<HTMLSelectElement>) =>
+                    setSelectedStatus(e.target.value)
+                  }
+                  className="block w-full py-3 px-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors cursor-pointer"
+                >
+                  <option value="all">全てのステータス</option>
+                  <option value="pending">未着手</option>
+                  <option value="in_progress">作業中</option>
+                  <option value="completed">完了</option>
+                  <option value="cancelled">キャンセル</option>
+                </select>
+              </div>
+              <div className="flex items-end space-x-2">
+                <Button type="submit" className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-200 shadow-sm hover:shadow-md">
+                  <i className="fas fa-search mr-2"></i>
+                  検索
+                </Button>
+                <button
+                  type="button"
+                  onClick={clearFilters}
+                  className="px-4 py-3 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  <i className="fas fa-times"></i>
+                </button>
+              </div>
             </div>
           </form>
         </div>
 
+        {/* Error Message */}
         {error && (
-          <div className="mb-4 rounded bg-red-50 p-3 text-sm text-red-500 flex items-center justify-between">
-            <span>{error}</span>
+          <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between">
+            <div className="flex items-center">
+              <i className="fas fa-exclamation-triangle text-red-500 mr-3"></i>
+              <span className="text-red-700">{error}</span>
+            </div>
             <button
               onClick={() => setError(null)}
-              className="text-red-700 hover:text-red-900"
+              className="text-red-500 hover:text-red-700 transition-colors"
             >
-              ×
+              <i className="fas fa-times"></i>
             </button>
           </div>
         )}
 
+        {/* Loading State */}
         {loading ? (
-          <div className="py-12 text-center text-gray-600">
-            <div className="inline-flex items-center">
-              <svg
-                className="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-600"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                ></circle>
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                ></path>
-              </svg>
-              読み込み中...
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-full mb-4">
+                <i className="fas fa-spinner fa-spin text-blue-600 text-xl"></i>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">読み込み中</h3>
+              <p className="text-gray-600">依頼データを取得しています...</p>
             </div>
           </div>
         ) : (
-          <div className="overflow-x-auto rounded-lg border border-gray-200">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
-                    依頼ID
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
-                    依頼内容
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
-                    希望納期
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
-                    ステータス
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
-                    支払金額
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
-                    支払状況
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
-                    依頼日時
-                  </th>
-                  <th className="px-4 py-3 text-left text-sm font-semibold text-gray-500">
-                    操作
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {requests.map((request) => (
-                  <tr key={request.uid} className="hover:bg-gray-50">
-                    <td className="px-4 py-4 text-sm text-gray-600 font-mono">
-                      #{request.uid}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-800 font-medium max-w-xs truncate">
-                      {request.description}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {new Date(request.desire_delivery_date).toLocaleDateString("ja-JP")}
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      {getStatusBadge(request.request_status)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {request.payment_details ? 
-                        formatCurrency(request.payment_details.amount, request.payment_details.currency) 
-                        : "未設定"
-                      }
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      {getPaymentStatusBadge(request.payment_details)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-gray-600">
-                      {new Date(request.created_at).toLocaleString("ja-JP")}
-                    </td>
-                    <td className="px-4 py-4 text-sm">
-                      <Link
-                        href={`/admin/souvenir-requests/${request.uid}`}
-                        className="text-[#357AFF] hover:text-[#2E69DE] font-medium hover:underline"
-                      >
-                        <i className="fa-regular fa-eye mr-1"></i>
-                        詳細
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-                {requests.length === 0 && !loading && (
-                  <tr>
-                    <td
-                      colSpan={8}
-                      className="px-4 py-12 text-center text-sm text-gray-500"
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <i className="fa-regular fa-file-lines text-2xl text-gray-400"></i>
-                        <p>依頼データが見つかりません</p>
-                        {(searchTerm || selectedStatus !== "all") && (
-                          <button
-                            onClick={clearFilters}
-                            className="text-[#357AFF] hover:text-[#2E69DE] text-sm"
-                          >
-                            フィルターをクリア
-                          </button>
-                        )}
+          <>
+            {/* Premium Table */}
+            {requests.length > 0 ? (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                {/* Table Header Summary */}
+                <div className="bg-gradient-to-r from-slate-50 to-blue-50 px-6 py-4 border-b border-gray-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <div className="flex items-center space-x-2">
+                        <i className="fas fa-table text-blue-600"></i>
+                        <span className="text-sm font-medium text-gray-700">お土産依頼一覧</span>
                       </div>
-                    </td>
-                  </tr>
+                      <div className="text-sm text-gray-600">
+                        全<span className="font-semibold text-blue-600">{totalCount}</span>件
+                      </div>
+                    </div>
+                    <div className="flex items-center space-x-4 text-sm text-gray-600">
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 bg-emerald-100 rounded-full"></div>
+                        <span>支払済: {paymentStats.paid}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 bg-amber-100 rounded-full"></div>
+                        <span>支払待ち: {paymentStats.pending}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 bg-red-100 rounded-full"></div>
+                        <span>支払失敗: {paymentStats.failed}</span>
+                      </div>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-3 h-3 bg-gray-100 rounded-full"></div>
+                        <span>未払い: {paymentStats.unpaid}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gradient-to-r from-slate-50 to-blue-50">
+                      <tr>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <i className="fas fa-hashtag text-gray-500"></i>
+                            <span>依頼ID</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <i className="fas fa-file-alt text-gray-500"></i>
+                            <span>依頼内容</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <i className="fas fa-calendar-check text-gray-500"></i>
+                            <span>希望納期</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <i className="fas fa-tasks text-gray-500"></i>
+                            <span>ステータス</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <i className="fas fa-yen-sign text-gray-500"></i>
+                            <span>支払金額</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <i className="fas fa-credit-card text-gray-500"></i>
+                            <span>支払状況</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <i className="fas fa-clock text-gray-500"></i>
+                            <span>依頼日時</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <i className="fas fa-paperclip text-gray-500"></i>
+                            <span>添付ファイル</span>
+                          </div>
+                        </th>
+                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
+                          <div className="flex items-center space-x-2">
+                            <i className="fas fa-cogs text-gray-500"></i>
+                            <span>操作</span>
+                          </div>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {requests.map((request, index) => {
+                        const statusConfig = getStatusConfig(request.request_status);
+                        const paymentConfig = getPaymentStatusConfig(request.payment_details);
+
+                        return (
+                          <tr
+                            key={request.uid}
+                            className={`hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 transition-all duration-300 ${
+                              index % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'
+                            } hover:shadow-sm`}
+                          >
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                                  <i className="fas fa-hashtag text-blue-600 text-xs"></i>
+                                </div>
+                                <div>
+                                  <div className="text-sm font-mono font-semibold text-gray-900">
+                                    #{request.uid}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {request.request_type}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4">
+                              <div className="max-w-xs">
+                                <div className="text-sm font-medium text-gray-900 line-clamp-2">
+                                  {request.description}
+                                </div>
+                                {request.special_note && (
+                                  <div className="text-xs text-gray-500 mt-1 line-clamp-1">
+                                    <i className="fas fa-sticky-note mr-1"></i>
+                                    {request.special_note}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center mr-3 ${
+                                  new Date(request.desire_delivery_date) < new Date()
+                                    ? 'bg-red-100'
+                                    : Math.ceil((new Date(request.desire_delivery_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 3
+                                    ? 'bg-amber-100'
+                                    : 'bg-emerald-100'
+                                }`}>
+                                  <i className={`fas fa-calendar-check text-xs ${
+                                    new Date(request.desire_delivery_date) < new Date()
+                                      ? 'text-red-600'
+                                      : Math.ceil((new Date(request.desire_delivery_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 3
+                                      ? 'text-amber-600'
+                                      : 'text-emerald-600'
+                                  }`}></i>
+                                </div>
+                                <div>
+                                  <div className={`text-sm font-medium ${
+                                    new Date(request.desire_delivery_date) < new Date()
+                                      ? 'text-red-700'
+                                      : 'text-gray-900'
+                                  }`}>
+                                    {new Date(request.desire_delivery_date).toLocaleDateString("ja-JP")}
+                                  </div>
+                                  <div className={`text-xs ${
+                                    new Date(request.desire_delivery_date) < new Date()
+                                      ? 'text-red-600 font-medium'
+                                      : Math.ceil((new Date(request.desire_delivery_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)) <= 3
+                                      ? 'text-amber-600'
+                                      : 'text-gray-500'
+                                  }`}>
+                                    {new Date(request.desire_delivery_date) < new Date() ? (
+                                      <span>期限切れ</span>
+                                    ) : (
+                                      <span>残り{Math.ceil((new Date(request.desire_delivery_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))}日</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${statusConfig.bgColor} ${statusConfig.textColor} border border-current border-opacity-20`}>
+                                <i className={`fas ${statusConfig.icon} mr-2`}></i>
+                                {statusConfig.label}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 bg-gradient-to-r from-emerald-100 to-green-100 rounded-lg flex items-center justify-center mr-3">
+                                  <i className="fas fa-yen-sign text-emerald-600 text-xs"></i>
+                                </div>
+                                <div>
+                                  <div className="text-sm font-bold text-gray-900">
+                                    {request.payment_details ?
+                                      formatCurrency(request.payment_details.amount, request.payment_details.currency)
+                                      : "未設定"
+                                    }
+                                  </div>
+                                  {request.payment_details && (
+                                    <div className="text-xs text-gray-500">
+                                      {request.payment_details.payment_type}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${paymentConfig.bgColor} ${paymentConfig.textColor} border border-current border-opacity-20`}>
+                                <i className={`fas ${paymentConfig.icon} mr-2`}></i>
+                                {paymentConfig.label}
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              <div className="flex items-center">
+                                <div className="w-8 h-8 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg flex items-center justify-center mr-3">
+                                  <i className="fas fa-clock text-blue-600 text-xs"></i>
+                                </div>
+                                <div>
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {new Date(request.created_at).toLocaleDateString("ja-JP")}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    {new Date(request.created_at).toLocaleTimeString("ja-JP", {
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap">
+                              {request.request_files && request.request_files.length > 0 ? (
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-gradient-to-r from-purple-100 to-pink-100 rounded-lg flex items-center justify-center mr-3">
+                                    <i className="fas fa-paperclip text-purple-600 text-xs"></i>
+                                  </div>
+                                  <div>
+                                    <div className="text-sm font-medium text-gray-900">
+                                      {request.request_files.length}件
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      {request.request_files.filter(f => f.file_status === 'completed').length}/{request.request_files.length} 完了
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="flex items-center">
+                                  <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center mr-3">
+                                    <i className="fas fa-minus text-gray-400 text-xs"></i>
+                                  </div>
+                                  <span className="text-sm text-gray-500">なし</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-6 py-4 whitespace-nowrap text-right">
+                              <div className="flex items-center justify-end space-x-2">
+                                <Link
+                                  href={`/admin/souvenir-requests/${request.uid}`}
+                                  className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
+                                >
+                                  <i className="fas fa-eye mr-2"></i>
+                                  詳細
+                                </Link>
+                                <div className="relative">
+                                  <button
+                                    className="inline-flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
+                                    title="クイックアクション"
+                                  >
+                                    <i className="fas fa-ellipsis-v"></i>
+                                  </button>
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : (
+              /* Empty State */
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-r from-gray-100 to-gray-200 rounded-full mb-6">
+                  <i className="fas fa-file-alt text-gray-400 text-2xl"></i>
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  依頼データが見つかりません
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  指定された条件に一致するお土産依頼はありません
+                </p>
+                {(searchTerm || selectedStatus !== "all") && (
+                  <button
+                    onClick={clearFilters}
+                    className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-medium rounded-lg transition-colors"
+                  >
+                    <i className="fas fa-filter mr-2"></i>
+                    フィルターをクリア
+                  </button>
                 )}
-              </tbody>
-            </table>
-          </div>
-        )}
+              </div>
+            )}
 
-        {totalPages > 1 && (
-          <div className="mt-6 flex flex-wrap justify-center gap-2">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="rounded-lg px-3 py-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
-            >
-              <i className="fa-solid fa-angles-left"></i>
-            </button>
-            <button
-              onClick={() => setCurrentPage(currentPage - 1)}
-              disabled={currentPage === 1}
-              className="rounded-lg px-3 py-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
-            >
-              <i className="fa-solid fa-angle-left"></i>
-            </button>
-
-            {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter((page) => {
-                // Show first page, last page, current page, and 2 pages around current
-                if (page === 1 || page === totalPages) return true;
-                if (Math.abs(page - currentPage) <= 2) return true;
-                return false;
-              })
-              .map((page, index, array) => {
-                // Add ellipsis where needed
-                const prevPage = array[index - 1];
-                const showEllipsis = prevPage && page - prevPage > 1;
-
-                return (
-                  <React.Fragment key={page}>
-                    {showEllipsis && (
-                      <span className="px-2 py-2 text-sm text-gray-400">
-                        ...
-                      </span>
-                    )}
+            {/* Premium Pagination */}
+            {totalPages > 1 && (
+              <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex flex-col sm:flex-row items-center justify-between space-y-4 sm:space-y-0">
+                  <div className="flex items-center space-x-4">
+                    <div className="text-sm text-gray-600">
+                      <span className="font-medium">{totalCount.toLocaleString()}</span> 件中{" "}
+                      <span className="font-medium">
+                        {currentPage === 1 ? 1 : (currentPage - 1) * 12 + 1} -{" "}
+                        {Math.min(currentPage * 12, totalCount)}
+                      </span>{" "}
+                      件を表示
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-gray-500">表示件数:</span>
+                      <select
+                        value="12"
+                        className="text-sm border border-gray-300 rounded-lg px-2 py-1 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        disabled
+                      >
+                        <option value="12">12件</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="flex items-center space-x-2">
                     <button
-                      onClick={() => setCurrentPage(page)}
-                      className={`rounded-lg px-4 py-2 text-sm ${
-                        currentPage === page
-                          ? "bg-[#357AFF] text-white"
-                          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                      }`}
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent rounded-lg transition-all duration-200"
+                      title="最初のページ"
                     >
-                      {page}
+                      <i className="fas fa-angle-double-left"></i>
                     </button>
-                  </React.Fragment>
-                );
-              })}
+                    <button
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent rounded-lg transition-all duration-200"
+                      title="前のページ"
+                    >
+                      <i className="fas fa-angle-left"></i>
+                    </button>
 
-            <button
-              onClick={() => setCurrentPage(currentPage + 1)}
-              disabled={currentPage === totalPages}
-              className="rounded-lg px-3 py-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
-            >
-              <i className="fa-solid fa-angle-right"></i>
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              className="rounded-lg px-3 py-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-50"
-            >
-              <i className="fa-solid fa-angles-right"></i>
-            </button>
-          </div>
-        )}
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1)
+                        .filter((page) => {
+                          if (page === 1 || page === totalPages) return true;
+                          if (Math.abs(page - currentPage) <= 2) return true;
+                          return false;
+                        })
+                        .map((page, index, array) => {
+                          const prevPage = array[index - 1];
+                          const showEllipsis = prevPage && page - prevPage > 1;
 
-        {/* Summary Stats */}
-        {requests.length > 0 && (
-          <div className="mt-6 text-center text-sm text-gray-600">
-            {currentPage === 1 ? 1 : (currentPage - 1) * 10 + 1} -{" "}
-            {Math.min(currentPage * 10, totalCount)} / {totalCount}件を表示
-          </div>
+                          return (
+                            <React.Fragment key={page}>
+                              {showEllipsis && (
+                                <span className="px-3 py-2 text-gray-400">...</span>
+                              )}
+                              <button
+                                onClick={() => setCurrentPage(page)}
+                                className={`px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                                  currentPage === page
+                                    ? "bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-sm"
+                                    : "text-gray-600 hover:bg-blue-50 hover:text-blue-600"
+                                }`}
+                              >
+                                {page}
+                              </button>
+                            </React.Fragment>
+                          );
+                        })}
+                    </div>
+
+                    <button
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent rounded-lg transition-all duration-200"
+                      title="次のページ"
+                    >
+                      <i className="fas fa-angle-right"></i>
+                    </button>
+                    <button
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                      className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:text-gray-400 disabled:hover:bg-transparent rounded-lg transition-all duration-200"
+                      title="最後のページ"
+                    >
+                      <i className="fas fa-angle-double-right"></i>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </>
         )}
-      </main>
+      </div>
     </div>
   );
 };
