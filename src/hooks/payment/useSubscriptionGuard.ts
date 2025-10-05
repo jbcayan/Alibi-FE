@@ -41,7 +41,9 @@ export const useSubscriptionGuard = (redirectToPlans: boolean = true, allowUnaut
         setSubscriptionStatus(status);
 
         // If user doesn't have an active subscription and redirectToPlans is true
+        // Skip subscription check if allowUnauthenticated is true (for routes like reset-password)
         if (
+          !allowUnauthenticated &&
           redirectToPlans &&
           (!status.has_active_subscription || status.subscription_status !== "current")
         ) {
