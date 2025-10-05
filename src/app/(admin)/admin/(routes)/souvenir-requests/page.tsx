@@ -458,12 +458,6 @@ const MainComponent: FC = () => {
                         </th>
                         <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
                           <div className="flex items-center space-x-2">
-                            <i className="fas fa-file-alt text-gray-500"></i>
-                            <span>依頼内容</span>
-                          </div>
-                        </th>
-                        <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">
-                          <div className="flex items-center space-x-2">
                             <i className="fas fa-calendar-check text-gray-500"></i>
                             <span>希望納期</span>
                           </div>
@@ -531,19 +525,6 @@ const MainComponent: FC = () => {
                                     {request.request_type}
                                   </div>
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="max-w-xs">
-                                <div className="text-sm font-medium text-gray-900 line-clamp-2">
-                                  {request.description}
-                                </div>
-                                {request.special_note && (
-                                  <div className="text-xs text-gray-500 mt-1 line-clamp-1">
-                                    <i className="fas fa-sticky-note mr-1"></i>
-                                    {request.special_note}
-                                  </div>
-                                )}
                               </div>
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
@@ -662,23 +643,13 @@ const MainComponent: FC = () => {
                               )}
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap text-right">
-                              <div className="flex items-center justify-end space-x-2">
-                                <Link
-                                  href={`/admin/souvenir-requests/${request.uid}`}
-                                  className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
-                                >
-                                  <i className="fas fa-eye mr-2"></i>
-                                  詳細
-                                </Link>
-                                <div className="relative">
-                                  <button
-                                    className="inline-flex items-center px-3 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md"
-                                    title="クイックアクション"
-                                  >
-                                    <i className="fas fa-ellipsis-v"></i>
-                                  </button>
-                                </div>
-                              </div>
+                              <Link
+                                href={`/admin/souvenir-requests/${request.uid}`}
+                                className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white text-sm font-medium rounded-lg transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105"
+                              >
+                                <i className="fas fa-eye mr-2"></i>
+                                詳細
+                              </Link>
                             </td>
                           </tr>
                         );
