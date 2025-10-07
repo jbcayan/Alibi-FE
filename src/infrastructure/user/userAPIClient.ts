@@ -4,7 +4,7 @@ import {
   PasswordResetRequestData,
   PasswordResetRequestResponse,
 } from "@/types/user/types";
-import { GalleryResponse } from "../gallery/utils/types";
+import { GalleryResponse as GalleryPhotoResponse } from "../gallery/utils/types";
 import {
   LoginResponse,
   UserPhotoEditRequest,
@@ -14,6 +14,7 @@ import {
   UserVideoAudioEditRequestResponse,
   UserVideoAudioEditRequestsListResponse,
   UserSouvenirRequestResponse,
+  GalleryResponse,
 } from "./utils/types";
 import { baseUrl } from "@/constants/baseApi";
 
@@ -311,7 +312,7 @@ class UserAPIClient {
     }
   }
 
-  public async getGalleryPhotos(): Promise<GalleryResponse> {
+  public async getGalleryPhotos(): Promise<GalleryPhotoResponse> {
     try {
       const response = await fetch(`${this.apiUrl}/gallery`, {
         method: "GET",
@@ -323,7 +324,7 @@ class UserAPIClient {
         throw new Error(errorData.detail || "Failed to fetch gallery data");
       }
 
-      const data: GalleryResponse = await response.json();
+      const data: GalleryPhotoResponse = await response.json();
       return data;
     } catch (error) {
       console.error("Gallery fetch error:", error);

@@ -808,6 +808,8 @@ const AlibiSouvenir = () => {
                         </label>
                         <input
                           type="date"
+                          min={new Date().toISOString().split('T')[0]}
+                          max={new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
                           {...register("desire_delivery_date", { required: true })}
                           className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
                         />
