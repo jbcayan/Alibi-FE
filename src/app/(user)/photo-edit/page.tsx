@@ -35,6 +35,11 @@ export default function PhotoEditingPage() {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
 
+  // Calculate date restrictions
+  const today = new Date();
+  const minDate = today.toISOString().split('T')[0];
+  const maxDate = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
   const {
     register,
     handleSubmit,
@@ -134,7 +139,7 @@ export default function PhotoEditingPage() {
 
   return (
     <div className="mt-6">
-      <div className="text-white min-h-screen p-4">
+      <div className="text-white p-4">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-8">
             <div className="flex justify-center gap-4 mb-6">
@@ -280,6 +285,8 @@ export default function PhotoEditingPage() {
                     type="date"
                     {...register("completionDate")}
                     className="glass-input w-full p-3"
+                    min={minDate}
+                    max={maxDate}
                   />
                   {errors.completionDate && (
                     <p className="error-message">

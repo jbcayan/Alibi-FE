@@ -33,6 +33,11 @@ const VideoEditingForm: React.FC = () => {
   const [requestError, setRequestError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"form" | "list">("form");
 
+  // Calculate date restrictions
+  const today = new Date();
+  const minDate = today.toISOString().split('T')[0];
+  const maxDate = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
   const {
     register,
     handleSubmit,
@@ -158,7 +163,7 @@ const VideoEditingForm: React.FC = () => {
 
   return (
     <div className="mt-6">
-      <div className="text-white min-h-screen p-4">
+      <div className="text-white p-4">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-8">
             <div className="flex justify-center gap-4 mb-6">
@@ -331,6 +336,8 @@ const VideoEditingForm: React.FC = () => {
                     type="date"
                     {...register("dueDate")}
                     className="glass-input w-full p-3"
+                    min={minDate}
+                    max={maxDate}
                   />
                   {errors.dueDate && (
                     <p className="error-message">{errors.dueDate.message}</p>

@@ -5,58 +5,17 @@ import Input from "../ui/Input";
 import Select from "../ui/Select";
 import Textarea from "../ui/Textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { useState, useEffect } from "react";
-import { X } from "lucide-react";
+import { X, FileText } from "lucide-react";
 import { z } from "zod";
 
-// Separate schemas for create and edit modes
-const createSchema = z.object({
+// Single schema for both create and edit modes
+const formSchema = z.object({
   title: z.string().min(1, "タイトルは必須です"),
   description: z.string().optional(),
+  file_type: z.enum(["image", "audio", "video", "pdf", "docx", "pptx", "xlsx", "other"]).optional(),
   is_public: z.string().default("true"),
-  price: z
-    .string()
-    .optional()
-    .refine((val) => !val || /^\d+(\.\d{1,2})?$/.test(val), {
-      message: "有効な価格を入力してください",
-    }),
-  file: z
-    .any()
-    .refine((file) => {
-      if (typeof window === "undefined") return true;
-      return file instanceof File;
-    }, "写真ファイルを選択してください")
-    .refine((file) => {
-      if (typeof window === "undefined") return true;
-      return file?.size && file.size <= 5000000;
-    }, "ファイルサイズは5MB以下にしてください")
-    .refine((file) => {
-      if (typeof window === "undefined") return true;
-      const allowedTypes = [
-        "image/jpeg",
-        "image/jpg",
-        "image/png",
-        "image/webp",
-        "image/gif",
-      ];
-      return file?.type && allowedTypes.includes(file.type);
-    }, "対応していないファイル形式です"),
-}).refine((data) => {
-  // If private (is_public = "false"), price is required
-  if (data.is_public === "false") {
-    return data.price && data.price.trim() !== "";
-  }
-  return true;
-}, {
-  message: "非公開写真には価格を設定してください",
-  path: ["price"],
-});
-
-const editSchema = z.object({
-  title: z.string().min(1, "タイトルは必須です"),
-  description: z.string().optional(),
-  is_public: z.string(),
   price: z
     .string()
     .optional()
@@ -71,13 +30,28 @@ const editSchema = z.object({
   }
   return true;
 }, {
-  message: "非公開写真には価格を設定してください",
+  message: "非公開ファイルには価格を設定してください",
   path: ["price"],
+}).refine((data) => {
+  // File is required only in create mode (when file_type is provided)
+  if (data.file_type && !data.file) {
+    return false;
+  }
+  return true;
+}, {
+  message: "ファイルを選択してください",
+  path: ["file"],
 });
 
-// Form data types
-export type UploadFormData = z.infer<typeof createSchema>;
-export type EditFormData = z.infer<typeof editSchema>;
+// Combined form data type for both create and edit
+type FormData = {
+  title: string;
+  description?: string;
+  file_type?: "image" | "audio" | "video" | "pdf" | "docx" | "pptx" | "xlsx" | "other";
+  is_public?: string;
+  price?: string;
+  file?: any;
+};
 
 // Photo data interface
 interface PhotoData {
@@ -85,6 +59,7 @@ interface PhotoData {
   title: string;
   description: string;
   file: string;
+  file_type?: string;
   is_public?: boolean;
   price?: string;
 }
@@ -95,6 +70,7 @@ interface EditPhotoData {
   title: string;
   description: string;
   file?: File;
+  file_type?: string;
   is_public?: boolean;
   price?: string;
 }
@@ -152,7 +128,7 @@ const CustomModal: React.FC<{
 const PhotoUploadModal: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: UploadFormData) => void;
+  onSubmit: (data: FormData) => void;
   onUpdate: (data: EditPhotoData) => void;
   editPhoto?: PhotoData | null;
 }> = ({ isOpen, onClose, onSubmit, onUpdate, editPhoto }) => {
@@ -161,7 +137,7 @@ const PhotoUploadModal: React.FC<{
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const isEditMode = !!editPhoto;
-  const schema = isEditMode ? editSchema : createSchema;
+  const schema = formSchema;
 
   const {
     register,
@@ -170,23 +146,33 @@ const PhotoUploadModal: React.FC<{
     reset,
     setValue,
     watch,
-  } = useForm({
+    control,
+  } = useForm<FormData>({
     resolver: zodResolver(schema),
     defaultValues: {
       title: "",
       description: "",
+      file_type: undefined, // No default file type
       is_public: "true",
       price: "",
     },
   });
 
-  // Watch is_public to clear price when switching to public
-  const watchedIsPublic = watch("is_public");
-  useEffect(() => {
-    if (watchedIsPublic === "true") {
-      setValue("price", "");
-    }
-  }, [watchedIsPublic, setValue]);
+  const watchedFileType = watch("file_type");
+
+  const getAcceptAttribute = (fileType: string) => {
+    const acceptMap = {
+      image: "image/*",
+      audio: "audio/*",
+      video: "video/*",
+      pdf: ".pdf",
+      docx: ".doc,.docx",
+      pptx: ".ppt,.pptx",
+      xlsx: ".xls,.xlsx",
+      other: ".txt",
+    };
+    return acceptMap[fileType as keyof typeof acceptMap] || "*/*";
+  };
 
   // Cleanup preview URL on unmount
   useEffect(() => {
@@ -200,6 +186,28 @@ const PhotoUploadModal: React.FC<{
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      // Validate file type matches selected file_type
+      if (!isEditMode) {
+        const fileType = watchedFileType;
+        const typeChecks = {
+          image: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"],
+          audio: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/aac"],
+          video: ["video/mp4", "video/avi", "video/mov", "video/wmv", "video/flv", "video/webm"],
+          pdf: ["application/pdf"],
+          docx: ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+          pptx: ["application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+          xlsx: ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+          other: ["text/plain", "application/octet-stream"],
+        };
+
+        const allowedTypes = typeChecks[fileType as keyof typeof typeChecks] || [];
+        if (!allowedTypes.includes(file.type)) {
+          alert(`選択したファイルタイプ（${fileType}）と一致しません。適切なファイルを選択してください。`);
+          e.target.value = "";
+          return;
+        }
+      }
+
       // Clean up previous preview URL
       if (previewUrl && selectedFile) {
         URL.revokeObjectURL(previewUrl);
@@ -221,18 +229,55 @@ const PhotoUploadModal: React.FC<{
     }
 
     onClose();
-    reset();
+    reset({
+      title: "",
+      description: "",
+      file_type: undefined, // No default file type
+      is_public: "true",
+      price: "",
+    });
     setSelectedFile(null);
     setPreviewUrl("");
     setIsSubmitting(false);
   };
 
+  // Explicitly set file_type in the payload to ensure synchronization
   const handleFormSubmit = async (data: any) => {
     if (isSubmitting) return;
 
     setIsSubmitting(true);
-    // debug
-    // console.log({ DataFromModal: data });
+    console.log("Form data before submission:", data); // Debugging log
+
+    // Ensure file_type matches the dropdown selection
+    const fileType = watchedFileType;
+    if (!fileType) {
+      alert("ファイルタイプを選択してください。");
+      setIsSubmitting(false);
+      return;
+    }
+    data.file_type = fileType; // Explicitly set file_type in the payload
+
+    // Validate file_type matches the uploaded file's MIME type
+    if (selectedFile) {
+      const typeChecks = {
+        image: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"],
+        audio: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/aac"],
+        video: ["video/mp4", "video/avi", "video/mov", "video/wmv", "video/flv", "video/webm"],
+        pdf: ["application/pdf"],
+        docx: ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+        pptx: ["application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+        xlsx: ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+        other: ["text/plain", "application/octet-stream"],
+      };
+
+      const allowedTypes = typeChecks[fileType as keyof typeof typeChecks] || [];
+      if (!allowedTypes.includes(selectedFile.type)) {
+        alert(`選択したファイルタイプ（${fileType}）と一致しません。適切なファイルを選択してください。`);
+        setIsSubmitting(false);
+        return;
+      }
+    }
+
     try {
       if (isEditMode && editPhoto) {
         // Update mode
@@ -267,32 +312,84 @@ const PhotoUploadModal: React.FC<{
     <CustomModal
       isOpen={isOpen}
       onClose={handleClose}
-      title={isEditMode ? "写真を編集" : "新しい写真をアップロード"}
+      title={isEditMode ? "ファイルを編集" : "新しいファイルをアップロード"}
     >
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
+        {/* File Type Selector */}
+        {!isEditMode && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              ファイルタイプ
+            </label>
+            <select
+              value={watchedFileType || ""} // Empty string if no value is selected
+              onChange={(e) => {
+                console.log("Select changed to:", e.target.value);
+                setValue("file_type", e.target.value as any, { shouldValidate: true });
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="" disabled>ファイルタイプを選択してください</option> {/* Placeholder option */}
+              <option value="image">画像</option>
+              <option value="audio">音声</option>
+              <option value="video">動画</option>
+              <option value="pdf">PDF</option>
+              <option value="docx">Word文書</option>
+              <option value="pptx">PowerPoint</option>
+              <option value="xlsx">Excel</option>
+              <option value="other">その他</option>
+            </select>
+            {errors.file_type?.message && (
+              <p className="mt-1 text-sm text-red-600">{errors.file_type.message}</p>
+            )}
+          </div>
+        )}
+
         {/* File Upload */}
           <Input
             label={
-              isEditMode ? "写真ファイル（変更する場合のみ）" : "写真ファイル"
+              isEditMode ? "ファイル（変更する場合のみ）" : "ファイル"
             }
             type="file"
-            accept="image/*"
+            accept={isEditMode ? "image/*,audio/*,video/*,.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt" : (watchedFileType ? getAcceptAttribute(watchedFileType) : "*/*")}
             onChange={handleFileChange}
             error={!isEditMode ? (errors.file?.message as string) : undefined}
           />
 
         {/* Preview */}
-        {previewUrl && (
+        {previewUrl && selectedFile && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               プレビュー
             </label>
-            <div className="aspect-video overflow-hidden rounded-lg bg-gray-100">
-              <img
-                src={previewUrl}
-                alt="プレビュー"
-                className="h-full w-full object-contain"
-              />
+            <div className="aspect-video overflow-hidden rounded-lg bg-gray-100 flex items-center justify-center">
+              {selectedFile.type.startsWith('image/') ? (
+                <img
+                  src={previewUrl}
+                  alt="プレビュー"
+                  className="max-h-full max-w-full object-contain"
+                />
+              ) : selectedFile.type.startsWith('video/') ? (
+                <video
+                  src={previewUrl}
+                  controls
+                  className="max-h-full max-w-full"
+                />
+              ) : selectedFile.type.startsWith('audio/') ? (
+                <audio
+                  src={previewUrl}
+                  controls
+                  className="w-full"
+                />
+              ) : (
+                <div className="text-center">
+                  <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                  <p className="text-sm text-gray-500">{selectedFile.name}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -300,7 +397,7 @@ const PhotoUploadModal: React.FC<{
         {/* Title */}
         <Input
           label="タイトル"
-          placeholder="写真のタイトルを入力"
+          placeholder="ファイルのタイトルを入力"
           register={register("title")}
           error={errors.title?.message}
         />
@@ -308,7 +405,7 @@ const PhotoUploadModal: React.FC<{
         {/* Description */}
         <Textarea
           label="説明（オプション）"
-          placeholder="写真の説明を入力"
+          placeholder="ファイルの説明を入力"
           register={register("description")}
         />
 
@@ -342,7 +439,7 @@ const PhotoUploadModal: React.FC<{
           )}
         </div>
 
-        {/* Price - Only show for private photos */}
+        {/* Price - Only show for private files */}
         {watch("is_public") === "false" && (
           <Input
             label="価格 *"

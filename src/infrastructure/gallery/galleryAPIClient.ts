@@ -60,6 +60,7 @@ class GalleryAPIClient {
     title: string;
     description: string;
     file: File;
+    file_type: string;
     is_public?: boolean;
     price?: string;
   }): Promise<Photo> {
@@ -67,7 +68,7 @@ class GalleryAPIClient {
       const formData = new FormData();
       formData.append("title", data.title);
       formData.append("description", data.description || "");
-      formData.append("file_type", "image");
+      formData.append("file_type", data.file_type);
       formData.append("file", data.file);
       formData.append("is_public", data.is_public ? "true" : "false");
       if (data.price) {

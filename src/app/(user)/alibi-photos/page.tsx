@@ -7,6 +7,7 @@ import { GalleryItem } from "@/infrastructure/user/utils/types";
 import { FiDownload } from "react-icons/fi";
 import Button from "@/components/ui/Button";
 import { X } from "lucide-react";
+import { FileText, Music, Video, File } from "lucide-react";
 import Spinner from "@/components/ui/Spinner";
 
 const IMAGES_PER_PAGE = 12;
@@ -70,19 +71,29 @@ const AlibiPhotos = () => {
                   {/* Card Container */}
                   <div className="relative rounded-2xl bg-white/10 shadow-xl border border-white/20 hover:border-blue-400 transition-all duration-300 backdrop-blur-xl overflow-hidden group-hover:shadow-blue-200/40">
                     {/* Image Container */}
-                    <div className="relative aspect-square overflow-hidden">
-                      {/* Main Image */}
+                    <div className="relative aspect-square overflow-hidden bg-gray-100 flex items-center justify-center">
                       {item.file_type === "image" ? (
+                        /* Main Image */
                         <img
                           src={item.file}
                           alt={item.title}
                           className="w-full h-full object-cover transition-all duration-300 group-hover:scale-110"
                         />
-                      ) : (
+                      ) : item.file_type === "video" ? (
+                        /* Video */
                         <video controls className="w-full h-full object-cover">
                           <source src={item.file} />
                           Your browser does not support video.
                         </video>
+                      ) : (
+                        /* File Type Icon */
+                        <div className="flex flex-col items-center justify-center text-gray-500">
+                          {item.file_type === 'pdf' && <FileText className="w-12 h-12 mb-2" />}
+                          {item.file_type === 'audio' && <Music className="w-12 h-12 mb-2" />}
+                          {(item.file_type === 'docx' || item.file_type === 'xlsx' || item.file_type === 'pptx') && <File className="w-12 h-12 mb-2" />}
+                          {(!['image', 'video', 'pdf', 'audio', 'docx', 'xlsx', 'pptx'].includes(item.file_type || '')) && <File className="w-12 h-12 mb-2" />}
+                          <span className="text-xs font-medium uppercase">{item.file_type || 'FILE'}</span>
+                        </div>
                       )}
                       {/* Overlay */}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
@@ -152,11 +163,22 @@ const AlibiPhotos = () => {
                             alt={previewImage.title}
                             className="w-full h-auto object-cover rounded-xl shadow-lg border border-white/10"
                           />
-                        ) : (
+                        ) : previewImage.file_type === "video" ? (
                           <video controls className="w-full h-auto object-cover rounded-xl shadow-lg border border-white/10">
                             <source src={previewImage.file} />
                             Your browser does not support video.
                           </video>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center p-8 bg-white/10 rounded-xl border border-white/20">
+                            {previewImage.file_type === 'pdf' && <FileText className="w-16 h-16 mb-4 text-white/80" />}
+                            {previewImage.file_type === 'audio' && <Music className="w-16 h-16 mb-4 text-white/80" />}
+                            {(previewImage.file_type === 'docx' || previewImage.file_type === 'xlsx' || previewImage.file_type === 'pptx') && <File className="w-16 h-16 mb-4 text-white/80" />}
+                            {(!['image', 'video', 'pdf', 'audio', 'docx', 'xlsx', 'pptx'].includes(previewImage.file_type || '')) && <File className="w-16 h-16 mb-4 text-white/80" />}
+                            <span className="text-white/80 text-sm font-medium uppercase">{previewImage.file_type || 'FILE'}</span>
+                            <p className="text-white/60 text-xs mt-2 text-center">
+                              {previewImage.title}
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>

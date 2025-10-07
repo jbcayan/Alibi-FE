@@ -32,6 +32,10 @@ import {
   ChevronLeft,
   ChevronRight,
   CreditCard,
+  FileText,
+  Music,
+  Video,
+  File,
 } from "lucide-react";
 
 const AlibiSouvenir = () => {
@@ -597,13 +601,25 @@ const AlibiSouvenir = () => {
                     {/* Card Container */}
                     <div className="relative rounded-2xl bg-white/10 shadow-xl border border-white/20 hover:border-blue-400 transition-all duration-300 backdrop-blur-xl overflow-hidden group-hover:shadow-blue-200/40">
                       {/* Image Container */}
-                      <div className="relative aspect-square overflow-hidden">
-                        {/* Main Image */}
-                        <img
-                          src={item.file}
-                          alt={item.title}
-                          className="w-full h-full object-cover transition-all duration-300 group-hover:scale-110"
-                        />
+                      <div className="relative aspect-square overflow-hidden bg-gray-100 flex items-center justify-center">
+                        {item.file_type === 'image' ? (
+                          /* Main Image */
+                          <img
+                            src={item.file}
+                            alt={item.title}
+                            className="w-full h-full object-cover transition-all duration-300 group-hover:scale-110"
+                          />
+                        ) : (
+                          /* File Type Icon */
+                          <div className="flex flex-col items-center justify-center text-gray-500">
+                            {item.file_type === 'pdf' && <FileText className="w-12 h-12 mb-2" />}
+                            {item.file_type === 'audio' && <Music className="w-12 h-12 mb-2" />}
+                            {item.file_type === 'video' && <Video className="w-12 h-12 mb-2" />}
+                            {(item.file_type === 'docx' || item.file_type === 'xlsx' || item.file_type === 'pptx') && <File className="w-12 h-12 mb-2" />}
+                            {(!['image', 'pdf', 'audio', 'video', 'docx', 'xlsx', 'pptx'].includes(item.file_type || '')) && <File className="w-12 h-12 mb-2" />}
+                            <span className="text-xs font-medium uppercase">{item.file_type || 'FILE'}</span>
+                          </div>
+                        )}
                         {/* Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                       </div>
@@ -662,11 +678,25 @@ const AlibiSouvenir = () => {
                 {/* Image Section */}
                 <div className="md:w-1/2 p-6 flex items-center justify-center bg-gradient-to-br from-blue-100/20 to-white/10 backdrop-blur-md">
                   <div className="w-full">
-                    <img
-                      src={orderModal.file}
-                      alt={orderModal.title}
-                      className="w-full h-auto object-cover rounded-xl shadow-lg border border-white/10"
-                    />
+                    {orderModal.file_type === 'image' ? (
+                      <img
+                        src={orderModal.file}
+                        alt={orderModal.title}
+                        className="w-full h-auto object-cover rounded-xl shadow-lg border border-white/10"
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-8 bg-white/10 rounded-xl border border-white/20">
+                        {orderModal.file_type === 'pdf' && <FileText className="w-16 h-16 mb-4 text-white/80" />}
+                        {orderModal.file_type === 'audio' && <Music className="w-16 h-16 mb-4 text-white/80" />}
+                        {orderModal.file_type === 'video' && <Video className="w-16 h-16 mb-4 text-white/80" />}
+                        {(orderModal.file_type === 'docx' || orderModal.file_type === 'xlsx' || orderModal.file_type === 'pptx') && <File className="w-16 h-16 mb-4 text-white/80" />}
+                        {(!['image', 'pdf', 'audio', 'video', 'docx', 'xlsx', 'pptx'].includes(orderModal.file_type || '')) && <File className="w-16 h-16 mb-4 text-white/80" />}
+                        <span className="text-white/80 text-sm font-medium uppercase">{orderModal.file_type || 'FILE'}</span>
+                        <p className="text-white/60 text-xs mt-2 text-center">
+                          {orderModal.title}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -927,17 +957,27 @@ const AlibiSouvenir = () => {
                               {req.media_files.slice(0, 4).map((file, i) => (
                                 <div
                                   key={i}
-                                  className="w-12 h-12 rounded-lg overflow-hidden border border-white/20 bg-white/5 shadow-sm"
+                                  className="w-12 h-12 rounded-lg overflow-hidden border border-white/20 bg-white/5 shadow-sm flex items-center justify-center"
                                 >
-                                  <img
-                                    src={
-                                      file.file.startsWith("http")
-                                        ? file.file
-                                        : `${baseUrl}${file.file}`
-                                    }
-                                    alt={`商品画像 ${i + 1}`}
-                                    className="w-full h-full object-cover"
-                                  />
+                                  {file.file_type === 'image' ? (
+                                    <img
+                                      src={
+                                        file.file.startsWith("http")
+                                          ? file.file
+                                          : `${baseUrl}${file.file}`
+                                      }
+                                      alt={`商品画像 ${i + 1}`}
+                                      className="w-full h-full object-cover"
+                                    />
+                                  ) : (
+                                    <div className="flex flex-col items-center justify-center text-white/60">
+                                      {file.file_type === 'pdf' && <FileText className="w-4 h-4" />}
+                                      {file.file_type === 'audio' && <Music className="w-4 h-4" />}
+                                      {file.file_type === 'video' && <Video className="w-4 h-4" />}
+                                      {(file.file_type === 'docx' || file.file_type === 'xlsx' || file.file_type === 'pptx') && <File className="w-4 h-4" />}
+                                      {(!['image', 'pdf', 'audio', 'video', 'docx', 'xlsx', 'pptx'].includes(file.file_type || '')) && <File className="w-4 h-4" />}
+                                    </div>
+                                  )}
                                 </div>
                               ))}
                               {req.media_files.length > 4 && (

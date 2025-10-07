@@ -17,34 +17,24 @@ import { UploadFormData } from "@/schemas/adminAlbumUpload";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { toast, ToastContainer } from "react-toastify";
 
-// Photo data interface
-interface PhotoData {
+// Gallery data interface
+interface GalleryItem {
   uid: string;
   title: string;
   description: string;
   file: string;
+  file_type: string;
+  created_at?: string;
   is_public?: boolean;
   price?: string;
 }
 
-// Edit photo data interface
-interface EditPhotoData {
+// Edit gallery data interface
+interface EditGalleryItem {
   uid: string;
   title: string;
   description: string;
   file?: File;
-  is_public?: boolean;
-  price?: string;
-}
-
-// Photo data interface
-interface PhotoData {
-  uid: string;
-  title: string;
-  description: string;
-  file: string;
-  category?: string;
-  created_at?: string;
   is_public?: boolean;
   price?: string;
 }
@@ -61,11 +51,11 @@ interface EditPhotoData {
 }
 
 // Main Component
-const PhotoAlbumsMain: React.FC = () => {
+const GalleryManagement: React.FC = () => {
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const [editPhoto, setEditPhoto] = useState<PhotoData | null>(null);
+  const [editGalleryItem, setEditGalleryItem] = useState<GalleryItem | null>(null);
 
   const createPhotoMutation = useCreatePhoto();
   const updatePhotoMutation = useUpdatePhoto();
@@ -93,25 +83,26 @@ const PhotoAlbumsMain: React.FC = () => {
   }, []);
 
   const handleUploadModalOpen = () => {
-    setEditPhoto(null);
+    setEditGalleryItem(null);
     setIsUploadModalOpen(true);
   };
 
   const handleUploadModalClose = () => {
     setIsUploadModalOpen(false);
-    setEditPhoto(null);
+    setEditGalleryItem(null);
   };
 
-  const handlePhotoUpload = async (data: any) => {
+  const handleGalleryUpload = async (data: any) => {
     try {
       await createPhotoMutation.mutateAsync({
         title: data.title,
         description: data.description || "",
         file: data.file,
+        file_type: data.file_type,
         is_public: data.is_public,
         price: data.price,
       });
-      toast.success("写真をアップロードしました");
+      toast.success("ファイルをアップロードしました");
       setIsUploadModalOpen(false);
       refetch();
     } catch (error) {
@@ -120,7 +111,7 @@ const PhotoAlbumsMain: React.FC = () => {
     }
   };
 
-  const handlePhotoUpdate = async (data: any) => {
+  const handleGalleryUpdate = async (data: any) => {
     // debug
     // console.log({ UpdatingFromData: data });
     try {
@@ -134,9 +125,9 @@ const PhotoAlbumsMain: React.FC = () => {
           file: data.file,
         },
       });
-      toast.success("写真を更新しました");
+      toast.success("ファイルを更新しました");
       setIsUploadModalOpen(false);
-      setEditPhoto(null);
+      setEditGalleryItem(null);
       refetch();
     } catch (error) {
       console.error("Update failed:", error);
@@ -144,28 +135,29 @@ const PhotoAlbumsMain: React.FC = () => {
     }
   };
 
-  const handleDeletePhoto = async (photoId: string) => {
-    const confirmed = confirm("この写真を削除してもよろしいですか？");
+  const handleDeleteGalleryItem = async (itemId: string) => {
+    const confirmed = confirm("このファイルを削除してもよろしいですか？");
     if (!confirmed) return;
 
     try {
-      await deletePhotoMutation.mutateAsync(photoId);
-      toast.success("写真を削除しました");
+      await deletePhotoMutation.mutateAsync(itemId);
+      toast.success("ファイルを削除しました");
       refetch();
     } catch (error) {
       console.error("Delete failed:", error);
-      toast.error("写真の削除に失敗しました");
+      toast.error("ファイルの削除に失敗しました");
     }
   };
 
-  const handlePhotoEdit = (photo: any) => {
-    setEditPhoto({
-      uid: photo.uid,
-      title: photo.title,
-      description: photo.description || "",
-      file: photo.file,
-      is_public: photo.is_public ?? true,
-      price: photo.price || "",
+  const handleGalleryEdit = (item: any) => {
+    setEditGalleryItem({
+      uid: item.uid,
+      title: item.title,
+      description: item.description || "",
+      file: item.file,
+      file_type: item.file_type,
+      is_public: item.is_public ?? true,
+      price: item.price || "",
     });
     setIsUploadModalOpen(true);
   };
@@ -200,14 +192,14 @@ const PhotoAlbumsMain: React.FC = () => {
       <div className="flex-1">
         <div className="mb-8">
           <Breadcrumbs
-            items={[{ label: "写真アルバム", href: "/admin/photo-albums" }]}
+            items={[{ label: "ギャラリー管理", href: "/admin/photo-albums" }]}
             homeHref="/admin"
           />
         </div>
 
         <header className="border-b border-gray-200 bg-white px-6 py-4">
           <h1 className="text-2xl font-medium text-gray-800">
-            写真アルバム管理
+            ギャラリー管理
           </h1>
         </header>
 
@@ -234,7 +226,7 @@ const PhotoAlbumsMain: React.FC = () => {
               onClick={handleUploadModalOpen}
               disabled={isUploading || isUpdating}
             >
-              {isUploading ? "アップロード中..." : "新規写真をアップロード"}
+              {isUploading ? "アップロード中..." : "新規ファイルをアップロード"}
             </Button>
           </div>
 
@@ -264,14 +256,15 @@ const PhotoAlbumsMain: React.FC = () => {
                       created_at: photo.created_at || new Date().toISOString(),
                       is_public: photo.is_public,
                       price: photo.price,
+                      file_type: photo.file_type,
                     }}
-                    onUpdate={() => handlePhotoEdit(photo)}
-                    onDelete={() => handleDeletePhoto(photo.uid)}
+                    onUpdate={() => handleGalleryEdit(photo)}
+                    onDelete={() => handleDeleteGalleryItem(photo.uid)}
                   />
                 ))}
                 {filteredPhotos.length === 0 && (
                   <div className="col-span-full py-12 text-center text-gray-500">
-                    写真が見つかりません
+                    ファイルが見つかりません
                   </div>
                 )}
               </div>
@@ -306,12 +299,12 @@ const PhotoAlbumsMain: React.FC = () => {
       <PhotoUploadModal
         isOpen={isUploadModalOpen}
         onClose={handleUploadModalClose}
-        onSubmit={handlePhotoUpload}
-        onUpdate={handlePhotoUpdate}
-        editPhoto={editPhoto}
+        onSubmit={handleGalleryUpload}
+        onUpdate={handleGalleryUpdate}
+        editPhoto={editGalleryItem}
       />
     </div>
   );
 };
 
-export default PhotoAlbumsMain;
+export default GalleryManagement;

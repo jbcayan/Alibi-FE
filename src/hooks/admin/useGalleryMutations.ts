@@ -8,6 +8,7 @@ interface CreatePhotoData {
   title: string;
   description: string;
   file: File;
+  file_type: string;
   is_public?: boolean;
   price?: string;
 }
