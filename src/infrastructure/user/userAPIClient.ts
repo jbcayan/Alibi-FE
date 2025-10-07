@@ -331,6 +331,26 @@ class UserAPIClient {
     }
   }
 
+  public async getSouvenirGallery(): Promise<GalleryResponse> {
+    try {
+      const response = await fetch(`${this.apiUrl}/gallery/souvenir`, {
+        method: "GET",
+        headers: this.getHeaders(),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || "Failed to fetch souvenir gallery data");
+      }
+
+      const data: GalleryResponse = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Souvenir gallery fetch error:", error);
+      throw error;
+    }
+  }
+
   public async getUserSouvenirRequests(): Promise<
     UserSouvenirRequestResponse[]
   > {

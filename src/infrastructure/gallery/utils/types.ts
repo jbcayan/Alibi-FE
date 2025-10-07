@@ -6,6 +6,8 @@ export type Photo = {
   status: "ACTIVE" | "INACTIVE";
   file_type: "image";
   file: string;
+  is_public: boolean;
+  price?: string;
   created_at?: string;
 };
 

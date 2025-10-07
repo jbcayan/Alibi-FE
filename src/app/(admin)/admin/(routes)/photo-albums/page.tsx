@@ -17,22 +17,25 @@ import { UploadFormData } from "@/schemas/adminAlbumUpload";
 import Breadcrumbs from "@/components/ui/Breadcrumbs";
 import { toast, ToastContainer } from "react-toastify";
 
-const CategoryFilter: React.FC<{
-  selectedCategory: string;
-  onCategoryChange: (category: string) => void;
-}> = ({ selectedCategory, onCategoryChange }) => (
-  <select
-    value={selectedCategory}
-    onChange={(e) => onCategoryChange(e.target.value)}
-    className="rounded-lg border border-gray-300 px-2 lg:px-3 w-30 lg:w-50 py-3"
-  >
-    <option value="all">すべてのカテゴリー</option>
-    <option value="work">仕事</option>
-    <option value="travel">旅行</option>
-    <option value="event">イベント</option>
-    <option value="other">その他</option>
-  </select>
-);
+// Photo data interface
+interface PhotoData {
+  uid: string;
+  title: string;
+  description: string;
+  file: string;
+  is_public?: boolean;
+  price?: string;
+}
+
+// Edit photo data interface
+interface EditPhotoData {
+  uid: string;
+  title: string;
+  description: string;
+  file?: File;
+  is_public?: boolean;
+  price?: string;
+}
 
 // Photo data interface
 interface PhotoData {
@@ -42,6 +45,8 @@ interface PhotoData {
   file: string;
   category?: string;
   created_at?: string;
+  is_public?: boolean;
+  price?: string;
 }
 
 // Edit photo data interface
@@ -51,11 +56,12 @@ interface EditPhotoData {
   description: string;
   category: string;
   file?: File;
+  is_public?: boolean;
+  price?: string;
 }
 
 // Main Component
 const PhotoAlbumsMain: React.FC = () => {
-  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -96,12 +102,14 @@ const PhotoAlbumsMain: React.FC = () => {
     setEditPhoto(null);
   };
 
-  const handlePhotoUpload = async (data: UploadFormData) => {
+  const handlePhotoUpload = async (data: any) => {
     try {
       await createPhotoMutation.mutateAsync({
         title: data.title,
         description: data.description || "",
         file: data.file,
+        is_public: data.is_public,
+        price: data.price,
       });
       toast.success("写真をアップロードしました");
       setIsUploadModalOpen(false);
@@ -112,7 +120,7 @@ const PhotoAlbumsMain: React.FC = () => {
     }
   };
 
-  const handlePhotoUpdate = async (data: EditPhotoData) => {
+  const handlePhotoUpdate = async (data: any) => {
     // debug
     // console.log({ UpdatingFromData: data });
     try {
@@ -121,7 +129,8 @@ const PhotoAlbumsMain: React.FC = () => {
         data: {
           title: data.title,
           description: data.description,
-          category: data.category,
+          is_public: data.is_public,
+          price: data.price,
           file: data.file,
         },
       });
@@ -155,7 +164,8 @@ const PhotoAlbumsMain: React.FC = () => {
       title: photo.title,
       description: photo.description || "",
       file: photo.file,
-      category: photo.category || "other",
+      is_public: photo.is_public ?? true,
+      price: photo.price || "",
     });
     setIsUploadModalOpen(true);
   };
@@ -166,10 +176,8 @@ const PhotoAlbumsMain: React.FC = () => {
 
   // Filter photos by category
   const filteredPhotos = React.useMemo(() => {
-    const photos = galleryData?.results || [];
-    if (selectedCategory === "all") return photos;
-    return photos.filter((photo: any) => photo.category === selectedCategory);
-  }, [galleryData?.results, selectedCategory]);
+    return galleryData?.results || [];
+  }, [galleryData?.results]);
 
   const isUploading = createPhotoMutation.isPending;
   const isUpdating = updatePhotoMutation.isPending;
@@ -218,10 +226,7 @@ const PhotoAlbumsMain: React.FC = () => {
 
         <main className="lg:p-6 p-3">
           <div className="mb-6 flex items-center justify-between">
-            <CategoryFilter
-              selectedCategory={selectedCategory}
-              onCategoryChange={setSelectedCategory}
-            />
+            <div></div>
 
             <Button
               variant="primary"
@@ -257,17 +262,16 @@ const PhotoAlbumsMain: React.FC = () => {
                       url: photo.file,
                       title: photo.title,
                       created_at: photo.created_at || new Date().toISOString(),
+                      is_public: photo.is_public,
+                      price: photo.price,
                     }}
                     onUpdate={() => handlePhotoEdit(photo)}
                     onDelete={() => handleDeletePhoto(photo.uid)}
-                    isUpdating={isUpdating}
                   />
                 ))}
                 {filteredPhotos.length === 0 && (
                   <div className="col-span-full py-12 text-center text-gray-500">
-                    {selectedCategory === "all"
-                      ? "写真が見つかりません"
-                      : "このカテゴリーに写真がありません"}
+                    写真が見つかりません
                   </div>
                 )}
               </div>

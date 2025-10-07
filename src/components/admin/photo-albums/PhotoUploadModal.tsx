@@ -13,8 +13,14 @@ import { z } from "zod";
 // Separate schemas for create and edit modes
 const createSchema = z.object({
   title: z.string().min(1, "タイトルは必須です"),
-  category: z.string().min(1, "カテゴリーを選択してください"),
   description: z.string().optional(),
+  is_public: z.string().default("true"),
+  price: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\d+(\.\d{1,2})?$/.test(val), {
+      message: "有効な価格を入力してください",
+    }),
   file: z
     .any()
     .refine((file) => {
@@ -36,13 +42,37 @@ const createSchema = z.object({
       ];
       return file?.type && allowedTypes.includes(file.type);
     }, "対応していないファイル形式です"),
+}).refine((data) => {
+  // If private (is_public = "false"), price is required
+  if (data.is_public === "false") {
+    return data.price && data.price.trim() !== "";
+  }
+  return true;
+}, {
+  message: "非公開写真には価格を設定してください",
+  path: ["price"],
 });
 
 const editSchema = z.object({
   title: z.string().min(1, "タイトルは必須です"),
-  category: z.string().min(1, "カテゴリーを選択してください"),
   description: z.string().optional(),
+  is_public: z.string(),
+  price: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\d+(\.\d{1,2})?$/.test(val), {
+      message: "有効な価格を入力してください",
+    }),
   file: z.any().optional(),
+}).refine((data) => {
+  // If private (is_public = "false"), price is required
+  if (data.is_public === "false") {
+    return data.price && data.price.trim() !== "";
+  }
+  return true;
+}, {
+  message: "非公開写真には価格を設定してください",
+  path: ["price"],
 });
 
 // Form data types
@@ -55,7 +85,8 @@ interface PhotoData {
   title: string;
   description: string;
   file: string;
-  category?: string;
+  is_public?: boolean;
+  price?: string;
 }
 
 // Edit photo data interface
@@ -63,8 +94,9 @@ interface EditPhotoData {
   uid: string;
   title: string;
   description: string;
-  category: string;
   file?: File;
+  is_public?: boolean;
+  price?: string;
 }
 
 // Custom Modal with Light Gray Blur Background
@@ -138,35 +170,23 @@ const PhotoUploadModal: React.FC<{
     reset,
     setValue,
     watch,
-  } = useForm<UploadFormData | EditFormData>({
+  } = useForm({
     resolver: zodResolver(schema),
     defaultValues: {
       title: "",
-      category: "other",
       description: "",
+      is_public: "true",
+      price: "",
     },
   });
 
-  // Reset form when modal opens/closes or edit photo changes
+  // Watch is_public to clear price when switching to public
+  const watchedIsPublic = watch("is_public");
   useEffect(() => {
-    if (isOpen && editPhoto) {
-      // Edit mode: populate form with existing data
-      setValue("title", editPhoto.title);
-      setValue("description", editPhoto.description || "");
-      setValue("category", editPhoto.category || "other");
-      setPreviewUrl(editPhoto.file);
-      setSelectedFile(null);
-    } else if (isOpen) {
-      // Create mode: reset form
-      reset({
-        title: "",
-        category: "other",
-        description: "",
-      });
-      setPreviewUrl("");
-      setSelectedFile(null);
+    if (watchedIsPublic === "true") {
+      setValue("price", "");
     }
-  }, [isOpen, editPhoto, setValue, reset]);
+  }, [watchedIsPublic, setValue]);
 
   // Cleanup preview URL on unmount
   useEffect(() => {
@@ -220,12 +240,17 @@ const PhotoUploadModal: React.FC<{
           uid: editPhoto.uid,
           title: data.title,
           description: data.description || "",
-          category: data.category,
+          is_public: data.is_public === "true",
+          price: data.price || "",
           file: selectedFile || undefined,
         });
       } else {
         // Create mode
-        await onSubmit(data as UploadFormData);
+        await onSubmit({
+          ...data,
+          is_public: data.is_public === "true",
+          price: data.price || "",
+        });
       }
 
       handleClose();
@@ -235,13 +260,6 @@ const PhotoUploadModal: React.FC<{
       setIsSubmitting(false);
     }
   };
-
-  const categoryOptions = [
-    { value: "work", label: "仕事" },
-    { value: "travel", label: "旅行" },
-    { value: "event", label: "イベント" },
-    { value: "other", label: "その他" },
-  ];
 
   const canSubmit = isEditMode || selectedFile;
 
@@ -253,7 +271,6 @@ const PhotoUploadModal: React.FC<{
     >
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
         {/* File Upload */}
-        <div>
           <Input
             label={
               isEditMode ? "写真ファイル（変更する場合のみ）" : "写真ファイル"
@@ -261,10 +278,8 @@ const PhotoUploadModal: React.FC<{
             type="file"
             accept="image/*"
             onChange={handleFileChange}
-            error={!isEditMode && errors.file?.message}
-            required={!isEditMode}
+            error={!isEditMode ? (errors.file?.message as string) : undefined}
           />
-        </div>
 
         {/* Preview */}
         {previewUrl && (
@@ -288,16 +303,6 @@ const PhotoUploadModal: React.FC<{
           placeholder="写真のタイトルを入力"
           register={register("title")}
           error={errors.title?.message}
-          required
-        />
-
-        {/* Category */}
-        <Select
-          label="カテゴリー"
-          options={categoryOptions}
-          register={register("category")}
-          error={errors.category?.message}
-          required
         />
 
         {/* Description */}
@@ -307,7 +312,45 @@ const PhotoUploadModal: React.FC<{
           register={register("description")}
         />
 
-        {/* Actions */}
+        {/* Public/Private */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            公開設定
+          </label>
+          <div className="space-y-2">
+            <label className="flex items-center">
+              <input
+                type="radio"
+                {...register("is_public")}
+                value="true"
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+              />
+              <span className="ml-2 text-sm text-gray-700">公開</span>
+            </label>
+            <label className="flex items-center">
+              <input
+                type="radio"
+                {...register("is_public")}
+                value="false"
+                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
+              />
+              <span className="ml-2 text-sm text-gray-700">非公開</span>
+            </label>
+          </div>
+          {errors.is_public?.message && (
+            <p className="mt-1 text-sm text-red-600">{errors.is_public.message}</p>
+          )}
+        </div>
+
+        {/* Price - Only show for private photos */}
+        {watch("is_public") === "false" && (
+          <Input
+            label="価格 *"
+            placeholder="販売価格を入力（例: 1000）"
+            register={register("price")}
+            error={errors.price?.message}
+          />
+        )}
         <div className="flex justify-end space-x-3 pt-4">
           <Button
             type="button"

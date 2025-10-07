@@ -8,6 +8,8 @@ interface CreatePhotoData {
   title: string;
   description: string;
   file: File;
+  is_public?: boolean;
+  price?: string;
 }
 
 interface UpdatePhotoData {
@@ -15,8 +17,9 @@ interface UpdatePhotoData {
   data: {
     title: string;
     description: string;
-    category: string;
     file?: File;
+    is_public?: boolean;
+    price?: string;
   };
 }
 

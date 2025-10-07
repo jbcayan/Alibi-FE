@@ -133,7 +133,7 @@ const AlibiSouvenir = () => {
 
   const fetchGallery = async () => {
     try {
-      const res = await userApiClient.getGalleryPhotos();
+      const res = await userApiClient.getSouvenirGallery();
       setGalleryItems(res.results || []);
     } catch (error) {
       console.error("Failed to fetch gallery:", error);

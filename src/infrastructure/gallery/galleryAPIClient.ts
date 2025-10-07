@@ -60,6 +60,8 @@ class GalleryAPIClient {
     title: string;
     description: string;
     file: File;
+    is_public?: boolean;
+    price?: string;
   }): Promise<Photo> {
     try {
       const formData = new FormData();
@@ -67,6 +69,10 @@ class GalleryAPIClient {
       formData.append("description", data.description || "");
       formData.append("file_type", "image");
       formData.append("file", data.file);
+      formData.append("is_public", data.is_public ? "true" : "false");
+      if (data.price) {
+        formData.append("price", data.price);
+      }
 
       // Create headers without Content-Type for FormData
       const requestHeaders = { ...this.headers };
@@ -90,17 +96,21 @@ class GalleryAPIClient {
     data: {
       title: string;
       description: string;
-      category: string;
       file?: File;
+      is_public?: boolean;
+      price?: string;
     }
   ): Promise<Photo> {
     try {
       const formData = new FormData();
       formData.append("title", data.title);
       formData.append("description", data.description || "");
-      formData.append("category", data.category);
       formData.append("status", "ACTIVE");
       formData.append("file_type", "image");
+      formData.append("is_public", data.is_public ? "true" : "false");
+      if (data.price) {
+        formData.append("price", data.price);
+      }
 
       // If new file is provided, append it; otherwise, keep existing
       if (data.file) {

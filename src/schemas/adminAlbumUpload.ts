@@ -41,6 +41,13 @@ export const uploadSchema = z.object({
     .refine((val) => !val || val.length <= 500, {
       message: "説明は500文字以内で入力してください",
     }),
+  is_public: z.boolean().default(true),
+  price: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\d+(\.\d{1,2})?$/.test(val), {
+      message: "有効な価格を入力してください",
+    }),
   file: fileValidation,
 });
 
@@ -61,6 +68,13 @@ export const editSchema = z.object({
     .optional()
     .refine((val) => !val || val.length <= 500, {
       message: "説明は500文字以内で入力してください",
+    }),
+  is_public: z.boolean().default(true),
+  price: z
+    .string()
+    .optional()
+    .refine((val) => !val || /^\d+(\.\d{1,2})?$/.test(val), {
+      message: "有効な価格を入力してください",
     }),
   file: fileValidation.optional(),
 });
