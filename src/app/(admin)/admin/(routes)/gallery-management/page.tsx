@@ -192,7 +192,7 @@ const GalleryManagement: React.FC = () => {
       <div className="flex-1">
         <div className="mb-8">
           <Breadcrumbs
-            items={[{ label: "ギャラリー管理", href: "/admin/photo-albums" }]}
+            items={[{ label: "ギャラリー管理", href: "/admin/gallery-management" }]}
             homeHref="/admin"
           />
         </div>

@@ -4,8 +4,8 @@ export const navItems: NavItem[] = [
   { id: "1", label: "ユーザー管理", href: "/admin/users", icon: "Users" },
   {
     id: "2",
-    label: "アリバイ写真DL管理",
-    href: "/admin/photo-albums",
+    label: "Gallery Management",
+    href: "/admin/gallery-management",
     icon: "Image",
   },
   {
@@ -56,9 +56,9 @@ export const dashboardCards: DashboardCardProps[] = [
   { id: "card1", label: "ユーザー管理", icon: "Users", href: "/admin/users" },
   {
     id: "card2",
-    label: "アリバイ写真DL管理",
+    label: "Gallery Management",
     icon: "Image",
-    href: "/admin/photo-albums",
+    href: "/admin/gallery-management",
   },
   {
     id: "card3",
