@@ -4,7 +4,7 @@ import { PencilRuler, SquarePen, Trash, Trash2, Lock, Eye, FileText, Music, Vide
 const PhotoCard: React.FC<{
   photo: any;
   onDelete: (photoId: number | string) => void;
-  onUpdate: (photoId: number | string) => void;
+  onUpdate: (photo: any) => void;
 }> = ({ photo, onDelete, onUpdate }) => {
   const getFileIcon = (fileType: string) => {
     switch (fileType?.toLowerCase()) {
@@ -75,7 +75,7 @@ const PhotoCard: React.FC<{
         <div className="mt-2 flex justify-between space-x-2">
           {/* Edit button  */}
           <button
-            onClick={() => onUpdate(photo.id)}
+            onClick={() => onUpdate(photo)}
             className="text-gray-600 cursor-pointer hover:text-red-500"
           >
             <SquarePen className="text-blue-500" />

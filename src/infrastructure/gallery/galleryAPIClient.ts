@@ -106,14 +106,18 @@ class GalleryAPIClient {
       const formData = new FormData();
       formData.append("title", data.title);
       formData.append("description", data.description || "");
-      formData.append("status", "ACTIVE");
-      formData.append("file_type", "image");
-      formData.append("is_public", data.is_public ? "true" : "false");
-      if (data.price) {
+      
+      // Only append is_public if it's provided
+      if (data.is_public !== undefined) {
+        formData.append("is_public", data.is_public ? "true" : "false");
+      }
+      
+      // Only append price if it's provided
+      if (data.price !== undefined && data.price !== "") {
         formData.append("price", data.price);
       }
 
-      // If new file is provided, append it; otherwise, keep existing
+      // If new file is provided, append it
       if (data.file) {
         formData.append("file", data.file);
       }
@@ -121,7 +125,6 @@ class GalleryAPIClient {
       // Create headers without Content-Type for FormData
       const requestHeaders = { ...this.headers };
       delete (requestHeaders as any)["Content-Type"];
-      // console.log({ formData });
 
       const response = await fetch(`${this.baseURL}/gallery/admin/${uid}`, {
         method: "PATCH",

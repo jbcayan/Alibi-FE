@@ -23,24 +23,6 @@ const formSchema = z.object({
       message: "有効な価格を入力してください",
     }),
   file: z.any().optional(),
-}).refine((data) => {
-  // If private (is_public = "false"), price is required
-  if (data.is_public === "false") {
-    return data.price && data.price.trim() !== "";
-  }
-  return true;
-}, {
-  message: "非公開ファイルには価格を設定してください",
-  path: ["price"],
-}).refine((data) => {
-  // File is required only in create mode (when file_type is provided)
-  if (data.file_type && !data.file) {
-    return false;
-  }
-  return true;
-}, {
-  message: "ファイルを選択してください",
-  path: ["file"],
 });
 
 // Combined form data type for both create and edit
@@ -183,6 +165,33 @@ const PhotoUploadModal: React.FC<{
     };
   }, [previewUrl, selectedFile]);
 
+  // Populate form when editPhoto changes
+  useEffect(() => {
+    if (editPhoto) {
+      setValue("title", editPhoto.title);
+      setValue("description", editPhoto.description || "");
+      setValue("is_public", editPhoto.is_public ? "true" : "false");
+      setValue("price", editPhoto.price || "");
+      // Don't set file_type for edit mode as it's not editable
+      
+      // Set preview for existing file
+      if (editPhoto.file) {
+        setPreviewUrl(editPhoto.file);
+      }
+    } else {
+      // Reset form for create mode
+      reset({
+        title: "",
+        description: "",
+        file_type: undefined,
+        is_public: "true",
+        price: "",
+      });
+      setSelectedFile(null);
+      setPreviewUrl("");
+    }
+  }, [editPhoto, setValue, reset]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -248,33 +257,42 @@ const PhotoUploadModal: React.FC<{
     setIsSubmitting(true);
     console.log("Form data before submission:", data); // Debugging log
 
-    // Ensure file_type matches the dropdown selection
-    const fileType = watchedFileType;
-    if (!fileType) {
-      alert("ファイルタイプを選択してください。");
+    // Validate private files have price
+    if (data.is_public === "false" && (!data.price || data.price.trim() === "")) {
+      alert("非公開ファイルには価格を設定してください。");
       setIsSubmitting(false);
       return;
     }
-    data.file_type = fileType; // Explicitly set file_type in the payload
 
-    // Validate file_type matches the uploaded file's MIME type
-    if (selectedFile) {
-      const typeChecks = {
-        image: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"],
-        audio: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/aac"],
-        video: ["video/mp4", "video/avi", "video/mov", "video/wmv", "video/flv", "video/webm"],
-        pdf: ["application/pdf"],
-        docx: ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
-        pptx: ["application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
-        xlsx: ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
-        other: ["text/plain", "application/octet-stream"],
-      };
-
-      const allowedTypes = typeChecks[fileType as keyof typeof typeChecks] || [];
-      if (!allowedTypes.includes(selectedFile.type)) {
-        alert(`選択したファイルタイプ（${fileType}）と一致しません。適切なファイルを選択してください。`);
+    // Ensure file_type matches the dropdown selection for create mode
+    const fileType = watchedFileType;
+    if (!isEditMode) {
+      if (!fileType) {
+        alert("ファイルタイプを選択してください。");
         setIsSubmitting(false);
         return;
+      }
+      data.file_type = fileType; // Explicitly set file_type in the payload
+
+      // Validate file_type matches the uploaded file's MIME type
+      if (selectedFile) {
+        const typeChecks = {
+          image: ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"],
+          audio: ["audio/mpeg", "audio/mp3", "audio/wav", "audio/ogg", "audio/aac"],
+          video: ["video/mp4", "video/avi", "video/mov", "video/wmv", "video/flv", "video/webm"],
+          pdf: ["application/pdf"],
+          docx: ["application/msword", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+          pptx: ["application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+          xlsx: ["application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+          other: ["text/plain", "application/octet-stream"],
+        };
+
+        const allowedTypes = typeChecks[fileType as keyof typeof typeChecks] || [];
+        if (!allowedTypes.includes(selectedFile.type)) {
+          alert(`選択したファイルタイプ（${fileType}）と一致しません。適切なファイルを選択してください。`);
+          setIsSubmitting(false);
+          return;
+        }
       }
     }
 
@@ -357,31 +375,32 @@ const PhotoUploadModal: React.FC<{
           />
 
         {/* Preview */}
-        {previewUrl && selectedFile && (
+        {(previewUrl || (isEditMode && editPhoto?.file)) && (
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               プレビュー
             </label>
             <div className="aspect-video overflow-hidden rounded-lg bg-gray-100 flex items-center justify-center">
-              {selectedFile.type.startsWith('image/') ? (
+              {/* Show new file preview if available */}
+              {selectedFile && selectedFile.type.startsWith('image/') ? (
                 <img
                   src={previewUrl}
                   alt="プレビュー"
                   className="max-h-full max-w-full object-contain"
                 />
-              ) : selectedFile.type.startsWith('video/') ? (
+              ) : selectedFile && selectedFile.type.startsWith('video/') ? (
                 <video
                   src={previewUrl}
                   controls
                   className="max-h-full max-w-full"
                 />
-              ) : selectedFile.type.startsWith('audio/') ? (
+              ) : selectedFile && selectedFile.type.startsWith('audio/') ? (
                 <audio
                   src={previewUrl}
                   controls
                   className="w-full"
                 />
-              ) : (
+              ) : selectedFile ? (
                 <div className="text-center">
                   <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
                   <p className="text-sm text-gray-500">{selectedFile.name}</p>
@@ -389,7 +408,33 @@ const PhotoUploadModal: React.FC<{
                     {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                 </div>
-              )}
+              ) : /* Show existing file preview in edit mode */ isEditMode && editPhoto?.file ? (
+                editPhoto.file_type === 'image' ? (
+                  <img
+                    src={editPhoto.file}
+                    alt="現在のファイル"
+                    className="max-h-full max-w-full object-contain"
+                  />
+                ) : editPhoto.file_type === 'video' ? (
+                  <video
+                    src={editPhoto.file}
+                    controls
+                    className="max-h-full max-w-full"
+                  />
+                ) : editPhoto.file_type === 'audio' ? (
+                  <audio
+                    src={editPhoto.file}
+                    controls
+                    className="w-full"
+                  />
+                ) : (
+                  <div className="text-center">
+                    <FileText className="h-12 w-12 text-gray-400 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500">{editPhoto.title}</p>
+                    <p className="text-xs text-gray-400 mt-1">現在のファイル</p>
+                  </div>
+                )
+              ) : null}
             </div>
           </div>
         )}
@@ -444,7 +489,13 @@ const PhotoUploadModal: React.FC<{
           <Input
             label="価格 *"
             placeholder="販売価格を入力（例: 1000）"
-            register={register("price")}
+            register={register("price", {
+              required: watch("is_public") === "false" ? "非公開ファイルには価格が必要です" : false,
+              pattern: {
+                value: /^\d+(\.\d{1,2})?$/,
+                message: "有効な価格を入力してください"
+              }
+            })}
             error={errors.price?.message}
           />
         )}

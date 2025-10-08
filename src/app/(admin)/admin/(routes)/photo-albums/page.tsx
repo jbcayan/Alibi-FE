@@ -257,8 +257,11 @@ const GalleryManagement: React.FC = () => {
                       is_public: photo.is_public,
                       price: photo.price,
                       file_type: photo.file_type,
+                      description: photo.description,
+                      uid: photo.uid,
+                      file: photo.file,
                     }}
-                    onUpdate={() => handleGalleryEdit(photo)}
+                    onUpdate={(photoData) => handleGalleryEdit(photoData)}
                     onDelete={() => handleDeleteGalleryItem(photo.uid)}
                   />
                 ))}
