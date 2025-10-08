@@ -333,8 +333,33 @@ const PhotoUploadModal: React.FC<{
       title={isEditMode ? "ファイルを編集" : "新しいファイルをアップロード"}
     >
       <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-        {/* File Type Selector */}
-        {!isEditMode && (
+        {/* File Type Display (Edit Mode) or Selector (Create Mode) */}
+        {isEditMode ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              ファイルタイプ
+            </label>
+            <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-gray-700">
+              {editPhoto?.file_type ? (
+                (() => {
+                  const typeLabels = {
+                    image: "画像",
+                    audio: "音声", 
+                    video: "動画",
+                    pdf: "PDF",
+                    docx: "Word文書",
+                    pptx: "PowerPoint",
+                    xlsx: "Excel",
+                    other: "その他"
+                  };
+                  return typeLabels[editPhoto.file_type as keyof typeof typeLabels] || editPhoto.file_type;
+                })()
+              ) : (
+                "不明"
+              )}
+            </div>
+          </div>
+        ) : (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
               ファイルタイプ
