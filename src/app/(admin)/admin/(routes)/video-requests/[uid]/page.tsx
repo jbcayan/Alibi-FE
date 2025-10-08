@@ -37,6 +37,7 @@ interface VideoEditRequestDetail {
   request_status: string;
   request_type: string;
   desire_delivery_date: string;
+  user_email?: string;
   files: FileItem[];
 }
 
@@ -95,7 +96,6 @@ const VideoEditRequestDetailPage = () => {
       }
     };
     if (uid) fetchData();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uid]);
 
   const handleStatusChange = async (
@@ -141,7 +141,7 @@ const VideoEditRequestDetailPage = () => {
 
         // Log FormData contents for debugging
         console.log("FormData contents:");
-        for (let [key, value] of formData.entries()) {
+        for (const [key, value] of formData.entries()) {
           if (value instanceof File) {
             console.log(`${key}: File(${value.name}, ${value.size} bytes, ${value.type})`);
           } else {
@@ -342,6 +342,11 @@ const handleDownloadFile = (fileUrl: string, fileName: string, fileType: string)
                     <p className="text-gray-600 flex items-center space-x-2 mt-1">
                       <span className="text-sm bg-gray-100 px-2 py-1 rounded-full">依頼ID: {data.uid}</span>
                     </p>
+                    {data.user_email && (
+                      <p className="text-gray-600 flex items-center space-x-2 mt-2">
+                        <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded-full">メールアドレス: {data.user_email}</span>
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>

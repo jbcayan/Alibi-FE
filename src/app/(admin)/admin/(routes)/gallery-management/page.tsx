@@ -245,7 +245,7 @@ const GalleryManagement: React.FC = () => {
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-6">
                 {filteredPhotos.map((photo: any) => (
                   <PhotoCard
                     key={photo.uid}
@@ -266,8 +266,22 @@ const GalleryManagement: React.FC = () => {
                   />
                 ))}
                 {filteredPhotos.length === 0 && (
-                  <div className="col-span-full py-12 text-center text-gray-500">
-                    ファイルが見つかりません
+                  <div className="col-span-full py-16 text-center">
+                    <div className="max-w-md mx-auto">
+                      <div className="w-24 h-24 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <Upload className="w-10 h-10 text-gray-400" />
+                      </div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">ファイルが見つかりません</h3>
+                      <p className="text-gray-600 text-sm mb-6">新しいファイルをアップロードしてギャラリーを始めましょう</p>
+                      <Button
+                        variant="primary"
+                        leftIcon={<Upload className="h-4 w-4" />}
+                        onClick={handleUploadModalOpen}
+                        disabled={isUploading || isUpdating}
+                      >
+                        ファイルをアップロード
+                      </Button>
+                    </div>
                   </div>
                 )}
               </div>

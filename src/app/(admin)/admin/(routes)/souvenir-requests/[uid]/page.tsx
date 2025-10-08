@@ -14,6 +14,7 @@ interface SouvenirRequestDetail {
   request_type: string;
   desire_delivery_date: string;
   created_at: string;
+  user_email?: string;
   request_files: Array<{
     file: string;
     file_type: string;
@@ -256,6 +257,13 @@ const RequestDetailsPage: FC = () => {
               <div>
                 <h1 className="text-3xl font-bold text-slate-900">お土産依頼詳細</h1>
                 <p className="text-slate-600 mt-1">依頼ID: {request.code}</p>
+                {request.user_email && (
+                  <p className="text-slate-600 mt-2">
+                    <span className="inline-block bg-blue-100 text-blue-800 text-sm px-2 py-1 rounded-full">
+                      メールアドレス: {request.user_email}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
             <div className="flex items-center space-x-3">
