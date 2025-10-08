@@ -41,17 +41,21 @@ const AlibiPhotos = () => {
   // Download a single image
   const handleDownload = async (url: string, title: string) => {
     try {
-      // Try direct download first (for pre-signed S3 URLs)
+      // Use API proxy to force download with proper headers
+      const token = localStorage.getItem('accessToken');
+      const downloadUrl = `/api/download-image?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+
+      // Create a temporary link to trigger download
       const link = document.createElement('a');
-      link.href = url;
+      link.href = downloadUrl;
       link.download = title || 'download';
-      link.target = '_blank';
+      link.style.display = 'none';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     } catch (error) {
-      // Fallback to API proxy if direct download fails
-      console.warn('Direct download failed, trying API proxy:', error);
+      console.error('Download failed:', error);
+      // Fallback: open in new tab if download fails
       const token = localStorage.getItem('accessToken');
       const downloadUrl = `/api/download-image?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
       window.open(downloadUrl, '_blank');
