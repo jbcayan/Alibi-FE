@@ -13,10 +13,12 @@ export async function GET(request: NextRequest) {
   try {
     const headers: Record<string, string> = {
       'Accept': '*/*',
+      'User-Agent': 'Mozilla/5.0 (compatible; AlibiApp/1.0)',
     };
 
-    // Add authorization header for backend API URLs
-    if (authToken && (url.includes('prod-be.examplesite.jp') || url.includes('alibi-s3.s3.amazonaws.com'))) {
+    // Don't add authorization header for S3 URLs as they should be pre-signed
+    // Only add authorization for backend API URLs that might need it
+    if (authToken && url.includes('prod-be.examplesite.jp')) {
       headers['Authorization'] = `Bearer ${authToken}`;
     }
 
