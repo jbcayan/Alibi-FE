@@ -39,9 +39,23 @@ const AlibiPhotos = () => {
   };
 
   // Download a single image
-  const handleDownload = (url: string, title: string) => {
-    const downloadUrl = `/api/download-image?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}`;
-    window.open(downloadUrl, '_blank');
+  const handleDownload = async (url: string, title: string) => {
+    try {
+      // Try direct download first (for pre-signed S3 URLs)
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = title || 'download';
+      link.target = '_blank';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (error) {
+      // Fallback to API proxy if direct download fails
+      console.warn('Direct download failed, trying API proxy:', error);
+      const token = localStorage.getItem('accessToken');
+      const downloadUrl = `/api/download-image?url=${encodeURIComponent(url)}&title=${encodeURIComponent(title)}${token ? `&token=${encodeURIComponent(token)}` : ''}`;
+      window.open(downloadUrl, '_blank');
+    }
   };
 
   // Pagination logic
