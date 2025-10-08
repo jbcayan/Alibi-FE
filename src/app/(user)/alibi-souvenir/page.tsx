@@ -56,6 +56,23 @@ const AlibiSouvenir = () => {
   const [widgetLoaded, setWidgetLoaded] = useState(false);
   const widgetScriptRef = useRef<HTMLScriptElement | null>(null);
 
+  // Calculate minimum delivery date (5 business days from today)
+  const getMinDeliveryDate = () => {
+    const today = new Date();
+    let businessDaysAdded = 0;
+    const currentDate = new Date(today);
+
+    while (businessDaysAdded < 5) {
+      currentDate.setDate(currentDate.getDate() + 1);
+      // Check if it's a weekday (Monday = 1, Tuesday = 2, Wednesday = 3, Thursday = 4, Friday = 5)
+      if (currentDate.getDay() >= 1 && currentDate.getDay() <= 5) {
+        businessDaysAdded++;
+      }
+    }
+
+    return currentDate.toISOString().split('T')[0];
+  };
+
   // Robust UnivaPay script loader (from subscription flow)
   const loadUnivapayScript = (src: string): Promise<void> => {
     console.log('[Souvenir] loadUnivapayScript called with src:', src);
@@ -805,17 +822,30 @@ const AlibiSouvenir = () => {
                       <div>
                         <label className="block text-sm font-medium mb-1 text-white/80">
                           Desired Delivery Date
+                          <span className="text-xs text-white/60 block mt-1">
+                            (Must be at least 5 business days from today)
+                          </span>
                         </label>
                         <input
                           type="date"
-                          min={new Date().toISOString().split('T')[0]}
-                          max={new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]}
-                          {...register("desire_delivery_date", { required: true })}
+                          min={getMinDeliveryDate()}
+                          {...register("desire_delivery_date", { 
+                            required: "Delivery date is required",
+                            validate: (value) => {
+                              if (!value) return "Delivery date is required";
+                              const selectedDate = new Date(value);
+                              const minDate = new Date(getMinDeliveryDate());
+                              if (selectedDate < minDate) {
+                                return "Delivery date must be at least 5 business days from today";
+                              }
+                              return true;
+                            }
+                          })}
                           className="w-full p-3 rounded-lg border border-white/20 bg-white/20 text-white placeholder-white/60 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-blue-400"
                         />
                         {errors.desire_delivery_date && (
                           <span className="text-xs text-red-400 mt-1 block">
-                            Delivery date is required.
+                            {errors.desire_delivery_date.message || "Delivery date is required."}
                           </span>
                         )}
                       </div>

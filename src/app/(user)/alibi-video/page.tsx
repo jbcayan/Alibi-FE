@@ -33,10 +33,22 @@ const VideoEditingForm: React.FC = () => {
   const [requestError, setRequestError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<"form" | "list">("form");
 
-  // Calculate date restrictions
-  const today = new Date();
-  const minDate = today.toISOString().split('T')[0];
-  const maxDate = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // Calculate minimum delivery date (5 business days from today)
+  const getMinDeliveryDate = () => {
+    const today = new Date();
+    let businessDaysAdded = 0;
+    const currentDate = new Date(today);
+
+    while (businessDaysAdded < 5) {
+      currentDate.setDate(currentDate.getDate() + 1);
+      // Check if it's a weekday (Monday = 1, Tuesday = 2, Wednesday = 3, Thursday = 4, Friday = 5)
+      if (currentDate.getDay() >= 1 && currentDate.getDay() <= 5) {
+        businessDaysAdded++;
+      }
+    }
+
+    return currentDate.toISOString().split('T')[0];
+  };
 
   const {
     register,
@@ -331,13 +343,26 @@ const VideoEditingForm: React.FC = () => {
                 <div className="mb-6">
                   <label className="block text-sm font-medium mb-2 text-white">
                     希望納期
+                    <span className="text-xs text-white/60 block mt-1">
+                      (Must be at least 5 business days from today)
+                    </span>
                   </label>
                   <input
                     type="date"
-                    {...register("dueDate")}
+                    {...register("dueDate", {
+                      required: "納期は必須です",
+                      validate: (value) => {
+                        if (!value) return "納期は必須です";
+                        const selectedDate = new Date(value);
+                        const minDate = new Date(getMinDeliveryDate());
+                        if (selectedDate < minDate) {
+                          return "納期は今日から5営業日以降を選択してください";
+                        }
+                        return true;
+                      }
+                    })}
                     className="glass-input w-full p-3"
-                    min={minDate}
-                    max={maxDate}
+                    min={getMinDeliveryDate()}
                   />
                   {errors.dueDate && (
                     <p className="error-message">{errors.dueDate.message}</p>

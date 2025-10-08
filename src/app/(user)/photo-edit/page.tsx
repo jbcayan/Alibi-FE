@@ -35,10 +35,22 @@ export default function PhotoEditingPage() {
   const [loadingRequests, setLoadingRequests] = useState(false);
   const [requestError, setRequestError] = useState<string | null>(null);
 
-  // Calculate date restrictions
-  const today = new Date();
-  const minDate = today.toISOString().split('T')[0];
-  const maxDate = new Date(today.getTime() + 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+  // Calculate minimum delivery date (5 business days from today)
+  const getMinDeliveryDate = () => {
+    const today = new Date();
+    let businessDaysAdded = 0;
+    const currentDate = new Date(today);
+
+    while (businessDaysAdded < 5) {
+      currentDate.setDate(currentDate.getDate() + 1);
+      // Check if it's a weekday (Monday = 1, Tuesday = 2, Wednesday = 3, Thursday = 4, Friday = 5)
+      if (currentDate.getDay() >= 1 && currentDate.getDay() <= 5) {
+        businessDaysAdded++;
+      }
+    }
+
+    return currentDate.toISOString().split('T')[0];
+  };
 
   const {
     register,
@@ -280,13 +292,26 @@ export default function PhotoEditingPage() {
                 <div className="mb-8">
                   <label className="block text-sm font-medium mb-2">
                     納品希望日 *
+                    <span className="text-xs text-white/60 block mt-1">
+                      (Must be at least 5 business days from today)
+                    </span>
                   </label>
                   <input
                     type="date"
-                    {...register("completionDate")}
+                    {...register("completionDate", {
+                      required: "納品希望日は必須です",
+                      validate: (value) => {
+                        if (!value) return "納品希望日は必須です";
+                        const selectedDate = new Date(value);
+                        const minDate = new Date(getMinDeliveryDate());
+                        if (selectedDate < minDate) {
+                          return "納品希望日は今日から5営業日以降を選択してください";
+                        }
+                        return true;
+                      }
+                    })}
                     className="glass-input w-full p-3"
-                    min={minDate}
-                    max={maxDate}
+                    min={getMinDeliveryDate()}
                   />
                   {errors.completionDate && (
                     <p className="error-message">
