@@ -257,9 +257,9 @@ const PhotoUploadModal: React.FC<{
     setIsSubmitting(true);
     console.log("Form data before submission:", data); // Debugging log
 
-    // Validate private files have price
+    // Validate souvenir files have price
     if (data.is_public === "false" && (!data.price || data.price.trim() === "")) {
-      alert("非公開ファイルには価格を設定してください。");
+      alert("お土産には価格を設定してください。");
       setIsSubmitting(false);
       return;
     }
@@ -479,10 +479,10 @@ const PhotoUploadModal: React.FC<{
           register={register("description")}
         />
 
-        {/* Public/Private */}
+        {/* Publication Location */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            公開設定
+            掲載場所
           </label>
           <div className="space-y-2">
             <label className="flex items-center">
@@ -492,7 +492,7 @@ const PhotoUploadModal: React.FC<{
                 value="true"
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
               />
-              <span className="ml-2 text-sm text-gray-700">公開</span>
+              <span className="ml-2 text-sm text-gray-700">無料画像DL</span>
             </label>
             <label className="flex items-center">
               <input
@@ -501,7 +501,7 @@ const PhotoUploadModal: React.FC<{
                 value="false"
                 className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
               />
-              <span className="ml-2 text-sm text-gray-700">非公開</span>
+              <span className="ml-2 text-sm text-gray-700">お土産</span>
             </label>
           </div>
           {errors.is_public?.message && (
@@ -509,13 +509,13 @@ const PhotoUploadModal: React.FC<{
           )}
         </div>
 
-        {/* Price - Only show for private files */}
+        {/* Price - Only show for souvenir files */}
         {watch("is_public") === "false" && (
           <Input
             label="価格 *"
             placeholder="販売価格を入力（例: 1000）"
             register={register("price", {
-              required: watch("is_public") === "false" ? "非公開ファイルには価格が必要です" : false,
+              required: watch("is_public") === "false" ? "お土産には価格が必要です" : false,
               pattern: {
                 value: /^\d+(\.\d{1,2})?$/,
                 message: "有効な価格を入力してください"
